@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chi tiết sản phẩm - Mini Shop</title>
+  <meta name="description" content="Xem chi tiết sản phẩm thủ công, nội thất và trang trí tinh tế tại Mini Shop.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Reusable Header Component -->
+  <div id="site-header"></div>
+
+  <!-- Main Content -->
+  <main class="product-detail-page">
+    <div class="container">
+      
+      <!-- Breadcrumb Navigation -->
+      <nav class="breadcrumb-nav" aria-label="Breadcrumb">
+        <ul class="breadcrumb" id="productBreadcrumb">
+          <li><a href="index.html">Home</a></li>
+          <li class="breadcrumb-separator">&gt;</li>
+          <li><a href="products.html" id="breadcrumbCategory">Decor</a></li>
+          <li class="breadcrumb-separator">&gt;</li>
+          <li class="breadcrumb-current" id="breadcrumbTitle">Ceramic Vase Set - Minimal Style</li>
+        </ul>
+      </nav>
+
+      <!-- Main Product Detail Layout (3-Column Grid matching Reference Image) -->
+      <div class="product-detail-layout">
+
+        <!-- Column 1 & 2: Image Gallery (Left Thumbnails + Main View) -->
+        <div class="product-gallery-section">
+          <!-- Vertical Thumbnails List -->
+          <div class="thumbnail-list" id="thumbnailList">
+            <!-- Rendered dynamically via JS -->
+          </div>
+
+          <!-- Main Image View -->
+          <div class="main-image-container">
+            <img id="mainProductImage" src="assets/images/products/San_pham/bo-binh-gom-minimal-original.webp" alt="Ceramic Vase Set">
+          </div>
+        </div>
+
+        <!-- Column 3: Middle Product Info & Actions -->
+        <div class="product-info-section">
+          <!-- Badges Row -->
+          <div class="badge-group">
+            <span class="stock-status-badge" id="stockBadge">
+              <span class="stock-dot"></span> In Stock
+            </span>
+            <span class="category-tag-badge" id="categoryBadge">Home Decor</span>
+          </div>
+
+          <!-- Product Title -->
+          <h1 class="product-detail-title" id="productTitle">Ceramic Vase Set - Minimal Style</h1>
+
+          <!-- Rating & Review Count -->
+          <div class="rating-row">
+            <div class="stars-list" id="starRating">
+              <svg class="star-icon filled" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <svg class="star-icon filled" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <svg class="star-icon filled" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <svg class="star-icon filled" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <svg class="star-icon filled" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </div>
+            <span class="reviews-count" id="reviewsCount">(48 reviews)</span>
+          </div>
+
+          <!-- Price Row -->
+          <div class="detail-price-row">
+            <span class="detail-price" id="productPrice">499,000 VND</span>
+            <span class="detail-old-price" id="productOldPrice">699,000 VND</span>
+            <span class="detail-discount-badge" id="discountBadge">-29%</span>
+          </div>
+
+          <!-- Short Description -->
+          <p class="product-detail-desc" id="productDesc">
+            Elegant ceramic vase set perfect for modern home decoration.
+          </p>
+
+          <!-- Quantity Selector -->
+          <div class="quantity-wrapper">
+            <span class="quantity-label">Quantity:</span>
+            <div class="quantity-controls">
+              <button type="button" class="qty-btn" id="btnQtyMinus" aria-label="Decrease quantity">-</button>
+              <input type="number" class="qty-input" id="qtyInput" value="1" min="1" max="99">
+              <button type="button" class="qty-btn" id="btnQtyPlus" aria-label="Increase quantity">+</button>
+            </div>
+          </div>
+
+          <!-- Action Buttons (Add to Cart & Wishlist) -->
+          <div class="action-buttons-group">
+            <button type="button" class="btn btn-add-cart" id="btnAddToCart">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="9" cy="21" r="1"></circle>
+                <circle cx="20" cy="21" r="1"></circle>
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+              </svg>
+              <span>Add to cart</span>
+            </button>
+
+            <button type="button" class="btn btn-detail-wishlist" id="btnWishlist">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+              </svg>
+              <span>Wishlist</span>
+            </button>
+          </div>
+
+          <!-- Trust Badges & Policies -->
+          <div class="trust-policies-bar">
+            <!-- Free Delivery -->
+            <div class="trust-item">
+              <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <rect x="1" y="3" width="15" height="13" rx="2" ry="2"></rect>
+                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                <circle cx="18.5" cy="18.5" r="2.5"></circle>
+              </svg>
+              <div class="trust-text">
+                <span class="trust-title">Free Delivery</span>
+                <span class="trust-desc">Orders over 500,000 VND</span>
+              </div>
+            </div>
+
+            <!-- 30-Day Returns -->
+            <div class="trust-item">
+              <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+              </svg>
+              <div class="trust-text">
+                <span class="trust-title">30-Day Returns</span>
+                <span class="trust-desc">Easy returns & refunds</span>
+              </div>
+            </div>
+
+            <!-- Secure Payment -->
+            <div class="trust-item">
+              <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                <polyline points="9 12 11 14 15 10"></polyline>
+              </svg>
+              <div class="trust-text">
+                <span class="trust-title">Secure Payment</span>
+                <span class="trust-desc">100% secure checkout</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Column 4: Right Sidebar Cards (Detail Specs & Delivery Cards) -->
+        <div class="product-sidebar-section">
+
+          <!-- Card 1: DETAIL / THÔNG SỐ -->
+          <div class="sidebar-info-card">
+            <h3 class="sidebar-card-title">THÔNG SỐ SẢN PHẨM</h3>
+            <ul class="specs-list" id="specsList">
+              <li>
+                <span class="spec-label">Chất liệu</span>
+                <span class="spec-value" id="specMaterial">Ceramic</span>
+              </li>
+              <li>
+                <span class="spec-label">Màu sắc</span>
+                <span class="spec-value" id="specColor">Beige, Green, White</span>
+              </li>
+              <li>
+                <span class="spec-label">Kích thước</span>
+                <span class="spec-value" id="specDimensions">Tall: 20cm, Medium: 15cm, Small: 10cm</span>
+              </li>
+              <li>
+                <span class="spec-label">Trọng lượng</span>
+                <span class="spec-value" id="specWeight">1.2 kg (set)</span>
+              </li>
+              <li>
+                <span class="spec-label">Xuất xứ</span>
+                <span class="spec-value" id="specMadeIn">Việt Nam</span>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Card 2: DELIVERY -->
+          <div class="sidebar-info-card">
+            <h3 class="sidebar-card-title">GIAO HÀNG & VẬN CHUYỂN</h3>
+            <ul class="delivery-list">
+              <li>
+                <span class="bullet">•</span>
+                <div>
+                  <strong>Thời gian giao hàng:</strong> 2–5 ngày làm việc
+                </div>
+              </li>
+              <li>
+                <span class="bullet">•</span>
+                <div>
+                  <strong>Giao hỏa tốc:</strong> 1–2 ngày làm việc
+                </div>
+              </li>
+              <li>
+                <span class="bullet">•</span>
+                <div>
+                  <strong>Phí vận chuyển:</strong> 30,000 VND (Miễn phí từ 500k)
+                </div>
+              </li>
+            </ul>
+            <a href="javascript:void(0)" onclick="alert('Chính sách giao hàng: Miễn phí vận chuyển cho đơn hàng từ 500.000đ trở lên trên toàn quốc.')" class="delivery-more-link">Xem chính sách vận chuyển</a>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- RELATED PRODUCTS SECTION -->
+      <section class="related-products-section">
+        <div class="related-section-header">
+          <h2 class="related-title">RELATED PRODUCTS</h2>
+          <div class="carousel-nav-btns">
+            <button type="button" class="btn-carousel-nav" id="btnPrevRelated" aria-label="Previous items">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+            </button>
+            <button type="button" class="btn-carousel-nav" id="btnNextRelated" aria-label="Next items">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="related-carousel-wrapper">
+          <div class="related-products-grid" id="relatedProductsGrid">
+            <!-- Dynamically populated via JS -->
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Reusable Footer Component -->
+  <div id="site-footer"></div>
+
+  <!-- Cart Notification Toast Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="js/products-data.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/wishlist.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/components/header.js"></script>
+  <script src="js/components/footer.js"></script>
+  <script src="js/product-detail.js"></script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mini Shop - Sống đẹp mỗi ngày cùng đồ thủ công & trang trí</title>
+  <meta name="description" content="Mini Shop chuyên cung cấp đồ dùng, trang trí nội thất, sản phẩm thủ công tinh tế cho ngôi nhà của bạn.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Reusable Header Component Injection Point -->
+  <div id="site-header"></div>
+
+  <!-- Main Content Wrapper -->
+  <main>
+    <!-- Hero Banner Section -->
+    <section class="hero-section">
+      <div class="container">
+        <div class="hero-card">
+          <div class="hero-content">
+            <h1 class="hero-title">Sống đẹp mỗi ngày<br>cùng Mini Shop</h1>
+            <p class="hero-subtitle">Sản phẩm chất lượng cho tổ ấm của bạn.</p>
+            <a href="products.html" class="btn btn-primary">Mua sắm ngay</a>
+
+            <div class="hero-features">
+              <!-- Feature 1: Fast Delivery -->
+              <div class="feature-item">
+                <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="1" y="3" width="15" height="13" rx="2" ry="2"></rect>
+                  <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                  <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                  <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                </svg>
+                <div class="feature-text">
+                  <span class="feature-title">Giao hàng nhanh</span>
+                  <span class="feature-desc">Toàn quốc</span>
+                </div>
+              </div>
+
+              <!-- Feature 2: Warranty -->
+              <div class="feature-item">
+                <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                  <polyline points="9 12 11 14 15 10"></polyline>
+                </svg>
+                <div class="feature-text">
+                  <span class="feature-title">Bảo hành chính hãng</span>
+                  <span class="feature-desc">7 ngày đổi trả</span>
+                </div>
+              </div>
+
+              <!-- Feature 3: Support -->
+              <div class="feature-item">
+                <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 18v-6a9 9 0 0 1 18 0v6"></path>
+                  <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path>
+                </svg>
+                <div class="feature-text">
+                  <span class="feature-title">Hỗ trợ 24/7</span>
+                  <span class="feature-desc">Tư vấn tận tâm</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="hero-image-wrapper">
+            <img class="hero-img" src="assets/images/banner/banner-trang-chu-mini-shop.webp" alt="Trang trí nội thất Mini Shop">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Category Tabs Filter Bar -->
+    <section class="categories-section">
+      <div class="container">
+        <div class="categories-bar" id="categoriesBar">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Featured Products Section -->
+    <section class="products-section">
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title">Sản phẩm nổi bật</h2>
+          <a href="products.html" class="view-all-link">
+            <span>Xem tất cả</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </a>
+        </div>
+
+        <div class="product-grid" id="featuredProductGrid">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Reusable Footer Component Injection Point -->
+  <div id="site-footer"></div>
+
+  <!-- Scripts -->
+  <script src="js/products-data.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/wishlist.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/components/header.js"></script>
+  <script src="js/components/footer.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

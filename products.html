@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Danh sách sản phẩm - Mini Shop</title>
+  <meta name="description" content="Khám phá tất cả các sản phẩm thủ công, đồ trang trí nội thất độc đáo và chất lượng tại Mini Shop.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Reusable Header Component -->
+  <div id="site-header"></div>
+
+  <!-- Main Content Area -->
+  <main class="shop-section">
+    <div class="container">
+      <!-- Breadcrumb Navigation -->
+      <nav class="breadcrumb-nav" aria-label="Breadcrumb">
+        <ul class="breadcrumb">
+          <li><a href="index.html">Trang chủ</a></li>
+          <li class="breadcrumb-separator">&gt;</li>
+          <li class="breadcrumb-current">Sản phẩm</li>
+        </ul>
+      </nav>
+
+      <!-- Shop Main 2-Column Layout -->
+      <div class="shop-layout">
+
+        <!-- Sidebar Filter Panel -->
+        <aside class="shop-sidebar">
+          <div class="filter-card">
+            <h3 class="filter-title">Bộ lọc sản phẩm</h3>
+
+            <!-- Category Filter -->
+            <div class="filter-group">
+              <h4 class="filter-subtitle">Danh mục</h4>
+              <ul class="filter-list" id="categoryFilterList">
+                <!-- Populated dynamically via JS -->
+              </ul>
+            </div>
+
+            <!-- Price Filter -->
+            <div class="filter-group">
+              <h4 class="filter-subtitle">Mức giá</h4>
+              <div class="filter-radio-group">
+                <label class="filter-option-label">
+                  <input type="radio" name="price-range" value="all" checked>
+                  <span>Tất cả mức giá</span>
+                </label>
+                <label class="filter-option-label">
+                  <input type="radio" name="price-range" value="under-500k">
+                  <span>Dưới 500.000đ</span>
+                </label>
+                <label class="filter-option-label">
+                  <input type="radio" name="price-range" value="500k-1m">
+                  <span>500.000đ - 1.000.000đ</span>
+                </label>
+                <label class="filter-option-label">
+                  <input type="radio" name="price-range" value="1m-3m">
+                  <span>1.000.000đ - 3.000.000đ</span>
+                </label>
+                <label class="filter-option-label">
+                  <input type="radio" name="price-range" value="over-3m">
+                  <span>Trên 3.000.000đ</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Availability Filter -->
+            <div class="filter-group">
+              <h4 class="filter-subtitle">Tình trạng</h4>
+              <div class="filter-checkbox-group">
+                <label class="filter-option-label">
+                  <input type="checkbox" id="inStockFilter" value="in-stock">
+                  <span>Còn hàng (In stock)</span>
+                </label>
+              </div>
+            </div>
+
+          </div>
+        </aside>
+
+        <!-- Main Product Grid & Controls Area -->
+        <div class="shop-main">
+          
+          <!-- Topbar Header Info & Controls -->
+          <div class="shop-topbar">
+            <div class="shop-header-info">
+              <h1 class="shop-page-title">Sản phẩm</h1>
+              <span class="shop-results-count" id="resultsCount">Đang tải danh sách sản phẩm...</span>
+            </div>
+
+            <div class="shop-top-controls">
+              <!-- Inline Search Input -->
+              <div class="search-box shop-search-box">
+                <input type="text" class="search-input" id="shopSearchInput" placeholder="Tìm kiếm trong sản phẩm...">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+              </div>
+
+              <!-- Sorting Dropdown -->
+              <div class="sort-dropdown">
+                <select class="sort-select" id="sortSelect" aria-label="Sort products">
+                  <option value="newest">Sắp xếp: Mới nhất</option>
+                  <option value="price-asc">Giá: Thấp đến Cao</option>
+                  <option value="price-desc">Giá: Cao đến Thấp</option>
+                  <option value="name-asc">Tên: A - Z</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Product Cards Grid -->
+          <div class="product-grid" id="shopProductGrid">
+            <!-- Populated dynamically via JS -->
+          </div>
+
+          <!-- Load More Button -->
+          <div class="load-more-container">
+            <button class="btn-load-more" type="button">
+              <span>Xem thêm sản phẩm</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- Reusable Footer Component -->
+  <div id="site-footer"></div>
+
+  <!-- Scripts -->
+  <script src="js/products-data.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/wishlist.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/components/header.js"></script>
+  <script src="js/components/footer.js"></script>
+  <script src="js/products-list.js"></script>
+</body>
+</html>

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thanh toán & Đặt hàng - Mini Shop</title>
+  <meta name="description" content="Điền thông tin giao hàng và xác nhận đặt hàng đơn giản tại Mini Shop.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Reusable Header Component Injection Point -->
+  <div id="site-header"></div>
+
+  <!-- Main Content Wrapper -->
+  <main class="checkout-page">
+    <div class="container">
+      
+      <!-- Breadcrumb Navigation -->
+      <nav class="breadcrumb-nav" aria-label="Breadcrumb">
+        <ul class="breadcrumb">
+          <li><a href="index.html">Trang chủ</a></li>
+          <li class="breadcrumb-separator">&gt;</li>
+          <li><a href="cart.html">Giỏ hàng</a></li>
+          <li class="breadcrumb-separator">&gt;</li>
+          <li class="breadcrumb-current">Thanh toán & Đặt hàng</li>
+        </ul>
+      </nav>
+
+      <!-- Page Header -->
+      <div class="checkout-page-header">
+        <h1 class="checkout-page-title">Thanh toán đơn hàng</h1>
+        <p class="checkout-page-subtitle">Vui lòng điền thông tin người nhận bên dưới để hoàn tất đơn hàng.</p>
+      </div>
+
+      <!-- Main Checkout Layout Grid -->
+      <form id="checkoutForm" class="checkout-layout-grid">
+
+        <!-- Left Column: Shipping Info & Payment Method -->
+        <div class="checkout-form-section">
+          
+          <!-- Card 1: Customer Info -->
+          <div class="checkout-card">
+            <h3 class="checkout-card-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+              <span>1. Thông tin giao hàng</span>
+            </h3>
+
+            <div class="form-grid">
+              <div class="form-group full-width">
+                <label for="customerName" class="form-label">Họ và tên người nhận <span class="required">*</span></label>
+                <input type="text" id="customerName" class="form-input" placeholder="Ví dụ: Nguyễn Văn A" required>
+              </div>
+
+              <div class="form-group">
+                <label for="customerPhone" class="form-label">Số điện thoại <span class="required">*</span></label>
+                <input type="tel" id="customerPhone" class="form-input" placeholder="Ví dụ: 0912 345 678" required>
+              </div>
+
+              <div class="form-group">
+                <label for="customerEmail" class="form-label">Địa chỉ Email (tùy chọn)</label>
+                <input type="email" id="customerEmail" class="form-input" placeholder="name@example.com">
+              </div>
+
+              <div class="form-group">
+                <label for="customerCity" class="form-label">Tỉnh / Thành phố <span class="required">*</span></label>
+                <input type="text" id="customerCity" class="form-input" placeholder="Hà Nội / TP. Hồ Chí Minh..." required>
+              </div>
+
+              <div class="form-group">
+                <label for="customerAddress" class="form-label">Địa chỉ chi tiết (Số nhà, tên đường...) <span class="required">*</span></label>
+                <input type="text" id="customerAddress" class="form-input" placeholder="Ví dụ: Số 123 Đường Lê Lợi, Phường 1" required>
+              </div>
+
+              <div class="form-group full-width">
+                <label for="customerNotes" class="form-label">Ghi chú đơn hàng (Giao giờ hành chính, gọi trước khi giao...)</label>
+                <textarea id="customerNotes" class="form-textarea" rows="3" placeholder="Nhập ghi chú thêm cho đơn hàng nếu có..."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2: Payment Methods -->
+          <div class="checkout-card">
+            <h3 class="checkout-card-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                <line x1="1" y1="10" x2="23" y2="10"></line>
+              </svg>
+              <span>2. Phương thức thanh toán</span>
+            </h3>
+
+            <div class="payment-methods-list">
+              <!-- Method 1: COD -->
+              <label class="payment-method-card">
+                <input type="radio" name="payment-method" value="cod" checked>
+                <div class="payment-method-body">
+                  <div class="payment-method-header">
+                    <div class="payment-title-group">
+                      <span class="payment-method-title">Thanh toán khi nhận hàng (COD)</span>
+                      <span class="payment-badge-tag">Phổ biến</span>
+                    </div>
+                  </div>
+                  <p class="payment-method-desc">Bạn chỉ cần thanh toán bằng tiền mặt trực tiếp cho nhân viên giao hàng khi kiểm tra và nhận hàng.</p>
+                </div>
+              </label>
+
+              <!-- Method 2: Bank Transfer -->
+              <label class="payment-method-card">
+                <input type="radio" name="payment-method" value="bank">
+                <div class="payment-method-body">
+                  <div class="payment-method-header">
+                    <div class="payment-title-group">
+                      <span class="payment-method-title">Chuyển khoản ngân hàng (QR-Code)</span>
+                    </div>
+                  </div>
+                  <p class="payment-method-desc">Chuyển khoản qua ứng dụng ngân hàng bằng quét mã VietQR tự động xác nhận sau 1 phút.</p>
+                </div>
+              </label>
+
+              <!-- Method 3: E-Wallet -->
+              <label class="payment-method-card">
+                <input type="radio" name="payment-method" value="momo">
+                <div class="payment-method-body">
+                  <div class="payment-method-header">
+                    <div class="payment-title-group">
+                      <span class="payment-method-title">Ví điện tử MoMo / ZaloPay</span>
+                    </div>
+                  </div>
+                  <p class="payment-method-desc">Thanh toán tiện lợi qua ứng dụng ví MoMo hoặc ZaloPay trên điện thoại.</p>
+                </div>
+              </label>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right Column: Order Summary Sidebar -->
+        <div class="checkout-summary-section">
+          <div class="summary-card checkout-summary-card">
+            <h3 class="summary-title">Đơn hàng của bạn</h3>
+
+            <!-- Items List -->
+            <div class="checkout-items-list" id="checkoutItemsList">
+              <!-- Rendered via js/checkout.js -->
+            </div>
+
+            <div class="summary-divider"></div>
+
+            <div class="summary-row">
+              <span>Tạm tính:</span>
+              <span class="summary-val" id="checkoutSubtotal">0 VND</span>
+            </div>
+
+            <div class="summary-row">
+              <span>Phí vận chuyển:</span>
+              <span class="summary-val" id="checkoutShipping">0 VND</span>
+            </div>
+
+            <div class="summary-divider"></div>
+
+            <div class="summary-row summary-total">
+              <span>Tổng thanh toán:</span>
+              <span class="total-price" id="checkoutGrandTotal">0 VND</span>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="btn btn-primary btn-submit-order">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              <span>Xác nhận đặt hàng</span>
+            </button>
+
+            <!-- Trust Badges -->
+            <div class="checkout-trust-box">
+              <div class="trust-mini-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                <span>Đổi trả dễ dàng trong 7 ngày</span>
+              </div>
+              <div class="trust-mini-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="2" ry="2"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+                <span>Kiểm tra hàng trước khi thanh toán</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </form>
+
+    </div>
+  </main>
+
+  <!-- Reusable Footer Component -->
+  <div id="site-footer"></div>
+
+  <!-- ORDER SUCCESS MODAL OVERLAY -->
+  <div id="orderSuccessModal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-success-header">
+        <div class="success-icon-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+        <h2 class="modal-success-title">Đặt hàng thành công!</h2>
+        <p class="modal-success-subtitle">Cảm ơn bạn đã mua sắm tại <strong>Mini Shop</strong>. Đơn hàng của bạn đã được tiếp nhận và đang được xử lý!</p>
+      </div>
+
+      <div class="order-details-box">
+        <div class="detail-line">
+          <span>Mã đơn hàng:</span>
+          <strong id="modalOrderCode" class="highlight-code">#MS-000000</strong>
+        </div>
+        <div class="detail-line">
+          <span>Người nhận:</span>
+          <strong id="modalCustomerName">--</strong>
+        </div>
+        <div class="detail-line">
+          <span>Số điện thoại:</span>
+          <strong id="modalCustomerPhone">--</strong>
+        </div>
+        <div class="detail-line">
+          <span>Địa chỉ giao:</span>
+          <strong id="modalCustomerAddress">--</strong>
+        </div>
+        <div class="detail-line">
+          <span>Thanh toán:</span>
+          <strong id="modalPaymentMethod">COD</strong>
+        </div>
+        <div class="detail-line total-line">
+          <span>Tổng tiền:</span>
+          <strong id="modalTotalAmount" class="highlight-total">0 VND</strong>
+        </div>
+      </div>
+
+      <div class="modal-delivery-estimate">
+        🚚 Dự kiến giao hàng trong <strong>2 – 4 ngày làm việc</strong>. Nhân viên giao hàng sẽ gọi điện trước khi giao.
+      </div>
+
+      <div class="modal-actions">
+        <a href="index.html" class="btn btn-primary btn-block">Về trang chủ</a>
+        <a href="products.html" class="btn btn-outline btn-block">Tiếp tục mua sắm</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/products-data.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/wishlist.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/components/header.js"></script>
+  <script src="js/components/footer.js"></script>
+  <script src="js/checkout.js"></script>
+</body>
+</html>

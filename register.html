@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đăng ký - Mini Shop</title>
+  <meta name="description" content="Trang đăng ký tài khoản Mini Shop.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Reusable Header Component -->
+  <div id="site-header"></div>
+
+  <!-- Main Content -->
+  <main class="auth-main-wrapper">
+    <div class="container">
+      <div class="auth-card-container">
+        
+        <!-- Auth Header Tabs -->
+        <div class="auth-card-header">
+          <div class="auth-tabs">
+            <a href="login.html" class="auth-tab-btn">Đăng Nhập</a>
+            <a href="register.html" class="auth-tab-btn active">Đăng Ký</a>
+          </div>
+        </div>
+
+        <div class="auth-card-body">
+          <div class="auth-intro">
+            <h1 class="auth-title">Tham gia Mini Shop</h1>
+            <p class="auth-subtitle">Tạo tài khoản để trải nghiệm dịch vụ mua sắm & trải nghiệm quyền quản trị.</p>
+          </div>
+
+          <!-- Alert message box -->
+          <div id="authAlert" class="auth-alert" style="display: none;"></div>
+
+          <!-- Register Form -->
+          <form id="registerForm" class="auth-form" novalidate>
+            <div class="form-group">
+              <label for="fullnameInput" class="form-label">Họ và tên</label>
+              <div class="input-with-icon">
+                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <input type="text" id="fullnameInput" class="form-control" placeholder="Nguyễn Văn A" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="regEmailInput" class="form-label">Địa chỉ Email</label>
+              <div class="input-with-icon">
+                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                <input type="email" id="regEmailInput" class="form-control" placeholder="nguyenvana@example.com" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="roleSelect" class="form-label">Loại tài khoản (Thử nghiệm)</label>
+              <div class="input-with-icon">
+                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                <select id="roleSelect" class="form-control form-select">
+                  <option value="customer">👤 Khách hàng (Vào trang mua sắm)</option>
+                  <option value="admin">🛡️ Quản trị viên (Vào khu quản trị Admin)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+              <div class="form-group">
+                <label for="regPasswordInput" class="form-label">Mật khẩu</label>
+                <div class="input-with-icon">
+                  <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                  <input type="password" id="regPasswordInput" class="form-control" placeholder="••••••••" required>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="confirmPasswordInput" class="form-label">Xác nhận mật khẩu</label>
+                <div class="input-with-icon">
+                  <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  <input type="password" id="confirmPasswordInput" class="form-control" placeholder="••••••••" required>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-options">
+              <label class="checkbox-container">
+                <input type="checkbox" id="agreeTermsCheckbox" checked required>
+                <span class="checkmark"></span>
+                <span class="checkbox-label">Tôi đồng ý với <a href="#" onclick="alert('Đã chấp nhận điều khoản dịch vụ Mini Shop'); return false;" class="terms-link">Điều khoản dịch vụ</a> và Chính sách bảo mật.</span>
+              </label>
+            </div>
+
+            <button type="submit" class="btn btn-blue btn-block btn-lg" id="submitRegisterBtn">
+              <span>Đăng Ký Tài Khoản</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            </button>
+          </form>
+
+          <div class="auth-footer-note">
+            <span>Đã có tài khoản?</span>
+            <a href="login.html" class="auth-accent-link">Đăng nhập ngay</a>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Reusable Footer Component -->
+  <div id="site-footer"></div>
+
+  <!-- Scripts -->
+  <script src="js/products-data.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/wishlist.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/components/header.js"></script>
+  <script src="js/components/footer.js"></script>
+  <script src="js/register.js"></script>
+</body>
+</html>
