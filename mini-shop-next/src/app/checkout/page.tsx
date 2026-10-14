@@ -9,6 +9,109 @@ import { formatPrice } from '@/data/products';
 import { useToast } from '@/context/ToastContext';
 import { createOrderInSupabase } from '@/utils/supabase/orders';
 
+export interface OrderFormErrors {
+  name?: string;
+  phone?: string;
+  email?: string;
+  city?: string;
+  address?: string;
+}
+
+/**
+ * Tiêu chuẩn xác thực dữ liệu đặt hàng của khách:
+ * 1. Số điện thoại: Phải là số di động Việt Nam (03x, 05x, 07x, 08x, 09x hoặc +84), đúng 10 số, không chứa chữ cái, không lặp vô nghĩa.
+ * 2. Địa chỉ: Tối thiểu 8 ký tự, có ít nhất 2 từ rõ ràng, không chỉ toàn số, không gõ linh tinh / gõ bừa.
+ * 3. Tỉnh / Thành phố: Tối thiểu 3 ký tự, không chỉ gồm chữ số.
+ * 4. Họ và tên: Tối thiểu 2 từ (họ + tên), từ 3 ký tự, không chứa chữ số.
+ * 5. Email (tùy chọn): Nếu nhập thì phải đúng định dạng email.
+ */
+export function validateOrderForm(data: {
+  name: string;
+  phone: string;
+  email?: string;
+  city: string;
+  address: string;
+}): { isValid: boolean; errors: OrderFormErrors } {
+  const errors: OrderFormErrors = {};
+
+  // 1. Kiểm tra Họ và tên
+  const name = data.name.trim();
+  if (!name) {
+    errors.name = 'Vui lòng nhập họ và tên người nhận.';
+  } else if (name.length < 3) {
+    errors.name = 'Họ và tên quá ngắn (tối thiểu 3 ký tự).';
+  } else if (/\d/.test(name)) {
+    errors.name = 'Họ và tên không được chứa chữ số!';
+  } else if (name.split(/\s+/).filter(Boolean).length < 2) {
+    errors.name = 'Vui lòng nhập đầy đủ cả họ và tên (tối thiểu 2 từ, ví dụ: Nguyễn Văn A).';
+  }
+
+  // 2. Kiểm tra Số điện thoại
+  const rawPhone = data.phone.trim();
+  if (!rawPhone) {
+    errors.phone = 'Vui lòng nhập số điện thoại người nhận.';
+  } else if (/[a-zA-ZÀ-ỹ]/.test(rawPhone)) {
+    errors.phone = 'Lỗi: Số điện thoại không được chứa chữ cái! Vui lòng chỉ nhập số.';
+  } else {
+    const cleanPhone = rawPhone.replace(/[\s.-]/g, '');
+    const generalVnRegex = /^(0|\+84)(3|5|7|8|9)[0-9]{8}$/;
+
+    if (!generalVnRegex.test(cleanPhone)) {
+      errors.phone = 'Số điện thoại không đúng chuẩn di động Việt Nam (10 số, bắt đầu bằng 03, 05, 07, 08, 09 hoặc +84).';
+    } else {
+      const normalizedDigits = cleanPhone.replace(/^\+84/, '0');
+      const uniqueDigits = new Set(normalizedDigits.split(''));
+      if (uniqueDigits.size <= 2) {
+        errors.phone = 'Số điện thoại không hợp lệ (chứa dãy số lặp lại không có thật)!';
+      }
+    }
+  }
+
+  // 3. Kiểm tra Email (nếu khách nhập)
+  if (data.email && data.email.trim()) {
+    const email = data.email.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    if (!emailRegex.test(email)) {
+      errors.email = 'Địa chỉ email không đúng định dạng (ví dụ: name@example.com).';
+    }
+  }
+
+  // 4. Kiểm tra Tỉnh / Thành phố
+  const city = data.city.trim();
+  if (!city) {
+    errors.city = 'Vui lòng nhập Tỉnh / Thành phố nhận hàng.';
+  } else if (city.length < 3) {
+    errors.city = 'Tên Tỉnh / Thành phố quá ngắn (tối thiểu 3 ký tự, ví dụ: Hà Nội, TP.HCM).';
+  } else if (/^\d+$/.test(city)) {
+    errors.city = 'Tên Tỉnh / Thành phố không thể chỉ gồm chữ số.';
+  }
+
+  // 5. Kiểm tra Địa chỉ chi tiết (ngăn chặn gõ linh tinh / gõ bừa)
+  const address = data.address.trim();
+  const addressWords = address.split(/\s+/).filter(Boolean);
+  const junkPatterns = [
+    /^(linh\s*tinh|gõ\s*bừa|go\s*bua|không\s*có|ko\s*co|chưa\s*biết|asdf|qwerty|test|abc|xyz|nhà\s*tôi|o\s*day|ở\s*đây)/i,
+    /(.)\1{4,}/, // ký tự lặp vô nghĩa như aaaaa, 11111, .....
+  ];
+
+  if (!address) {
+    errors.address = 'Vui lòng nhập địa chỉ nhận hàng chi tiết.';
+  } else if (address.length < 8) {
+    errors.address = 'Địa chỉ quá ngắn (tối thiểu 8 ký tự, ví dụ: Số 123 Lê Lợi)!';
+  } else if (/^\d+$/.test(address.replace(/[\s,.-]/g, ''))) {
+    errors.address = 'Địa chỉ không hợp lệ (không thể chỉ gồm chữ số)!';
+  } else if (addressWords.length < 2) {
+    errors.address = 'Địa chỉ không rõ ràng (cần tối thiểu 2 từ, gồm số nhà, tên đường hoặc thôn xóm)!';
+  } else if (junkPatterns.some((pattern) => pattern.test(address))) {
+    errors.address = 'Địa chỉ chứa từ ngữ linh tinh hoặc không rõ ràng! Vui lòng nhập địa chỉ giao hàng thực tế.';
+  }
+
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors,
+  };
+}
+
 export default function CheckoutPage() {
   const router = useRouter();
   const { cart, subtotal, clearCart, totalCount } = useCart();
@@ -24,6 +127,8 @@ export default function CheckoutPage() {
     notes: '',
     paymentMethod: 'cod',
   });
+
+  const [formErrors, setFormErrors] = useState<OrderFormErrors>({});
 
   useEffect(() => {
     if (user) {
@@ -52,11 +157,16 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (!formData.name.trim() || !formData.phone.trim() || !formData.address.trim()) {
-      showToast('Vui lòng điền đầy đủ các thông tin bắt buộc (*)', 'warning');
+    // Áp dụng tiêu chuẩn xác thực thông tin đặt hàng
+    const validation = validateOrderForm(formData);
+    if (!validation.isValid) {
+      setFormErrors(validation.errors);
+      const firstError = Object.values(validation.errors)[0];
+      showToast(firstError || 'Thông tin đặt hàng chưa đúng tiêu chuẩn. Vui lòng kiểm tra lại!', 'danger');
       return;
     }
 
+    setFormErrors({});
     setIsSubmitting(true);
     const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
 
@@ -188,9 +298,18 @@ export default function CheckoutPage() {
                       className="form-input"
                       placeholder="Ví dụ: Nguyễn Văn A"
                       value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      onChange={(e) => {
+                        setFormData({ ...formData, name: e.target.value });
+                        if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: undefined }));
+                      }}
+                      style={formErrors.name ? { borderColor: '#ef4444' } : undefined}
                       required
                     />
+                    {formErrors.name && (
+                      <span style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '4px', display: 'block', fontWeight: 500 }}>
+                        ⚠️ {formErrors.name}
+                      </span>
+                    )}
                   </div>
 
                   <div className="form-group">
@@ -202,9 +321,18 @@ export default function CheckoutPage() {
                       className="form-input"
                       placeholder="Ví dụ: 0912 345 678"
                       value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      onChange={(e) => {
+                        setFormData({ ...formData, phone: e.target.value });
+                        if (formErrors.phone) setFormErrors((prev) => ({ ...prev, phone: undefined }));
+                      }}
+                      style={formErrors.phone ? { borderColor: '#ef4444' } : undefined}
                       required
                     />
+                    {formErrors.phone && (
+                      <span style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '4px', display: 'block', fontWeight: 500 }}>
+                        ⚠️ {formErrors.phone}
+                      </span>
+                    )}
                   </div>
 
                   <div className="form-group">
@@ -214,8 +342,17 @@ export default function CheckoutPage() {
                       className="form-input"
                       placeholder="name@example.com"
                       value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      onChange={(e) => {
+                        setFormData({ ...formData, email: e.target.value });
+                        if (formErrors.email) setFormErrors((prev) => ({ ...prev, email: undefined }));
+                      }}
+                      style={formErrors.email ? { borderColor: '#ef4444' } : undefined}
                     />
+                    {formErrors.email && (
+                      <span style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '4px', display: 'block', fontWeight: 500 }}>
+                        ⚠️ {formErrors.email}
+                      </span>
+                    )}
                   </div>
 
                   <div className="form-group">
@@ -227,9 +364,18 @@ export default function CheckoutPage() {
                       className="form-input"
                       placeholder="Hà Nội / TP. Hồ Chí Minh..."
                       value={formData.city}
-                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                      onChange={(e) => {
+                        setFormData({ ...formData, city: e.target.value });
+                        if (formErrors.city) setFormErrors((prev) => ({ ...prev, city: undefined }));
+                      }}
+                      style={formErrors.city ? { borderColor: '#ef4444' } : undefined}
                       required
                     />
+                    {formErrors.city && (
+                      <span style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '4px', display: 'block', fontWeight: 500 }}>
+                        ⚠️ {formErrors.city}
+                      </span>
+                    )}
                   </div>
 
                   <div className="form-group">
@@ -241,9 +387,18 @@ export default function CheckoutPage() {
                       className="form-input"
                       placeholder="Ví dụ: Số 123 Đường Lê Lợi, Phường 1"
                       value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      onChange={(e) => {
+                        setFormData({ ...formData, address: e.target.value });
+                        if (formErrors.address) setFormErrors((prev) => ({ ...prev, address: undefined }));
+                      }}
+                      style={formErrors.address ? { borderColor: '#ef4444' } : undefined}
                       required
                     />
+                    {formErrors.address && (
+                      <span style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '4px', display: 'block', fontWeight: 500 }}>
+                        ⚠️ {formErrors.address}
+                      </span>
+                    )}
                   </div>
 
                   <div className="form-group full-width">

@@ -109,8 +109,110 @@ async function handleOrderSubmit(e) {
   const notes = document.getElementById('customerNotes')?.value.trim();
   const paymentMethod = document.querySelector('input[name="payment-method"]:checked')?.value || 'cod';
 
-  if (!fullname || !phone || !address || !city) {
-    alert('Vui lòng điền đầy đủ các thông tin bắt buộc (*)!');
+  // 1. Kiểm tra Họ và tên
+  if (!fullname) {
+    alert('Vui lòng nhập họ và tên người nhận.');
+    document.getElementById('customerName')?.focus();
+    return;
+  }
+  if (fullname.length < 3) {
+    alert('Họ và tên quá ngắn (tối thiểu 3 ký tự).');
+    document.getElementById('customerName')?.focus();
+    return;
+  }
+  if (/\d/.test(fullname)) {
+    alert('Họ và tên không được chứa chữ số!');
+    document.getElementById('customerName')?.focus();
+    return;
+  }
+  if (fullname.split(/\s+/).filter(Boolean).length < 2) {
+    alert('Vui lòng nhập đầy đủ cả họ và tên (tối thiểu 2 từ, ví dụ: Nguyễn Văn A).');
+    document.getElementById('customerName')?.focus();
+    return;
+  }
+
+  // 2. Kiểm tra Số điện thoại (chặn nhập chữ, chặn số linh tinh)
+  if (!phone) {
+    alert('Vui lòng nhập số điện thoại người nhận.');
+    document.getElementById('customerPhone')?.focus();
+    return;
+  }
+  if (/[a-zA-ZÀ-ỹ]/.test(phone)) {
+    alert('Lỗi: Số điện thoại không được chứa chữ cái! Vui lòng chỉ nhập số.');
+    document.getElementById('customerPhone')?.focus();
+    return;
+  }
+  const cleanPhone = phone.replace(/[\s.-]/g, '');
+  const generalVnRegex = /^(0|\+84)(3|5|7|8|9)[0-9]{8}$/;
+  if (!generalVnRegex.test(cleanPhone)) {
+    alert('Số điện thoại không đúng chuẩn di động Việt Nam (10 số, bắt đầu bằng 03, 05, 07, 08, 09 hoặc +84).');
+    document.getElementById('customerPhone')?.focus();
+    return;
+  }
+  const normalizedDigits = cleanPhone.replace(/^\+84/, '0');
+  const uniqueDigits = new Set(normalizedDigits.split(''));
+  if (uniqueDigits.size <= 2) {
+    alert('Số điện thoại không hợp lệ (chứa dãy số lặp lại không có thật)!');
+    document.getElementById('customerPhone')?.focus();
+    return;
+  }
+
+  // 3. Kiểm tra Email (nếu có)
+  if (email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    if (!emailRegex.test(email)) {
+      alert('Địa chỉ email không đúng định dạng (ví dụ: name@example.com).');
+      document.getElementById('customerEmail')?.focus();
+      return;
+    }
+  }
+
+  // 4. Kiểm tra Tỉnh / Thành phố
+  if (!city) {
+    alert('Vui lòng nhập Tỉnh / Thành phố nhận hàng.');
+    document.getElementById('customerCity')?.focus();
+    return;
+  }
+  if (city.length < 3) {
+    alert('Tên Tỉnh / Thành phố quá ngắn (tối thiểu 3 ký tự, ví dụ: Hà Nội, TP.HCM).');
+    document.getElementById('customerCity')?.focus();
+    return;
+  }
+  if (/^\d+$/.test(city)) {
+    alert('Tên Tỉnh / Thành phố không thể chỉ gồm chữ số.');
+    document.getElementById('customerCity')?.focus();
+    return;
+  }
+
+  // 5. Kiểm tra Địa chỉ chi tiết (chặn gõ linh tinh, gõ bừa)
+  const addressWords = address.split(/\s+/).filter(Boolean);
+  const junkPatterns = [
+    /^(linh\s*tinh|gõ\s*bừa|go\s*bua|không\s*có|ko\s*co|chưa\s*biết|asdf|qwerty|test|abc|xyz|nhà\s*tôi|o\s*day|ở\s*đây)/i,
+    /(.)\1{4,}/,
+  ];
+  if (!address) {
+    alert('Vui lòng nhập địa chỉ nhận hàng chi tiết.');
+    document.getElementById('customerAddress')?.focus();
+    return;
+  }
+  if (address.length < 8) {
+    alert('Địa chỉ quá ngắn (tối thiểu 8 ký tự, ví dụ: Số 123 Lê Lợi)!');
+    document.getElementById('customerAddress')?.focus();
+    return;
+  }
+  if (/^\d+$/.test(address.replace(/[\s,.-]/g, ''))) {
+    alert('Địa chỉ không hợp lệ (không thể chỉ gồm chữ số)!');
+    document.getElementById('customerAddress')?.focus();
+    return;
+  }
+  if (addressWords.length < 2) {
+    alert('Địa chỉ không rõ ràng (cần tối thiểu 2 từ, gồm số nhà, tên đường hoặc thôn xóm)!');
+    document.getElementById('customerAddress')?.focus();
+    return;
+  }
+  if (junkPatterns.some((pattern) => pattern.test(address))) {
+    alert('Địa chỉ chứa từ ngữ linh tinh hoặc không rõ ràng! Vui lòng nhập địa chỉ giao hàng thực tế.');
+    document.getElementById('customerAddress')?.focus();
     return;
   }
 
