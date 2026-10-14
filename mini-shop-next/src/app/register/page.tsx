@@ -15,15 +15,23 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
-    if (password !== confirmPassword) {
-      setErrorMessage('Mật khẩu nhập lại không khớp!');
-      showToast('Mật khẩu nhập lại không khớp!', 'danger');
+    if (!name.trim()) {
+      setErrorMessage('Vui lòng nhập họ và tên của bạn!');
+      showToast('Vui lòng nhập họ và tên!', 'warning');
+      return;
+    }
+
+    if (!email.trim()) {
+      setErrorMessage('Vui lòng nhập địa chỉ email hợp lệ!');
+      showToast('Vui lòng nhập email!', 'warning');
       return;
     }
 
@@ -33,13 +41,29 @@ export default function RegisterPage() {
       return;
     }
 
-    const success = register(name, email, password);
-    if (success) {
-      showToast('Đăng ký tài khoản thành công! Đã tự động đăng nhập.', 'success');
-      router.push('/');
-    } else {
-      setErrorMessage('Email này đã được sử dụng. Vui lòng đăng nhập hoặc dùng email khác.');
-      showToast('Email đã tồn tại!', 'danger');
+    if (password !== confirmPassword) {
+      setErrorMessage('Mật khẩu nhập lại không khớp!');
+      showToast('Mật khẩu nhập lại không khớp!', 'danger');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const res = await register(name, email, password);
+      if (res.success) {
+        showToast('🎉 Đăng ký tài khoản thành công! Đang chuyển hướng...', 'success');
+        router.push('/');
+      } else {
+        setErrorMessage(res.message || 'Đăng ký không thành công. Vui lòng kiểm tra lại thông tin!');
+        showToast(res.message || 'Đăng ký thất bại!', 'danger');
+      }
+    } catch (err: any) {
+      const msg = err?.message || 'Có lỗi xảy ra trong quá trình đăng ký.';
+      setErrorMessage(msg);
+      showToast(msg, 'danger');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -73,12 +97,20 @@ export default function RegisterPage() {
                   color: '#dc2626',
                   padding: '0.75rem 1rem',
                   borderRadius: '8px',
-                  marginBottom: '1rem',
+                  marginBottom: '1.25rem',
                   fontSize: '0.9rem',
                   border: '1px solid #fecaca',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
                 }}
               >
-                {errorMessage}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <span>{errorMessage}</span>
               </div>
             )}
 
@@ -96,6 +128,7 @@ export default function RegisterPage() {
                     placeholder="Nguyễn Văn A"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
+                    disabled={isLoading}
                     required
                   />
                 </div>
@@ -114,6 +147,7 @@ export default function RegisterPage() {
                     placeholder="name@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    disabled={isLoading}
                     required
                   />
                 </div>
@@ -127,13 +161,34 @@ export default function RegisterPage() {
                     <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                   </svg>
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     className="form-control"
                     placeholder="Tối thiểu 6 ký tự"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    disabled={isLoading}
                     required
                   />
+                  <button
+                    type="button"
+                    className="btn-toggle-password"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label="Ẩn/Hiện mật khẩu"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      {showPassword ? (
+                        <>
+                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                          <line x1="1" y1="1" x2="23" y2="23"></line>
+                        </>
+                      ) : (
+                        <>
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                          <circle cx="12" cy="12" r="3"></circle>
+                        </>
+                      )}
+                    </svg>
+                  </button>
                 </div>
               </div>
 
@@ -145,22 +200,48 @@ export default function RegisterPage() {
                     <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                   </svg>
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     className="form-control"
                     placeholder="Nhập lại mật khẩu"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
+                    disabled={isLoading}
                     required
                   />
                 </div>
               </div>
 
-              <button type="submit" className="btn btn-primary btn-block btn-auth-submit">
-                <span>Tạo Tài Khoản</span>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                  <polyline points="12 5 19 12 12 19"></polyline>
-                </svg>
+              <button
+                type="submit"
+                className="btn btn-primary btn-block btn-auth-submit"
+                disabled={isLoading}
+                style={{ opacity: isLoading ? 0.75 : 1, cursor: isLoading ? 'not-allowed' : 'pointer' }}
+              >
+                {isLoading ? (
+                  <>
+                    <svg
+                      className="animate-spin"
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      style={{ animation: 'spin 1s linear infinite' }}
+                    >
+                      <circle cx="12" cy="12" r="10" strokeDasharray="32" strokeDashoffset="12"></circle>
+                    </svg>
+                    <span>Đang tạo tài khoản...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Tạo Tài Khoản</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                      <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                  </>
+                )}
               </button>
             </form>
 

@@ -1,15 +1,18 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
 import { formatPrice } from '@/data/products';
 import { useToast } from '@/context/ToastContext';
+import { createOrderInSupabase } from '@/utils/supabase/orders';
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { cart, subtotal, clearCart, totalCount } = useCart();
+  const { user } = useAuth();
   const { showToast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -22,6 +25,17 @@ export default function CheckoutPage() {
     paymentMethod: 'cod',
   });
 
+  useEffect(() => {
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        name: prev.name || user.name || '',
+        email: prev.email || user.email || '',
+      }));
+    }
+  }, [user]);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedOrder, setSubmittedOrder] = useState<{
     id: string;
     total: number;
@@ -31,7 +45,7 @@ export default function CheckoutPage() {
   const shippingFee = subtotal >= 500000 || subtotal === 0 ? 0 : 30000;
   const grandTotal = subtotal + shippingFee;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (cart.length === 0) {
       showToast('Giỏ hàng của bạn đang trống!', 'warning');
@@ -43,36 +57,75 @@ export default function CheckoutPage() {
       return;
     }
 
+    setIsSubmitting(true);
     const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
-    const newOrder = {
-      id: orderId,
-      customer: formData.name,
-      phone: formData.phone,
-      address: `${formData.address}, ${formData.city}`,
-      items: cart,
-      total: grandTotal,
-      paymentMethod: formData.paymentMethod,
-      notes: formData.notes,
-      status: 'Processing',
-      date: new Date().toLocaleDateString('vi-VN'),
-    };
+
+    const orderItems = cart.map((item) => {
+      const prod = item.product;
+      const price = prod?.price || 0;
+      return {
+        id: item.id,
+        product_id: prod?.id || item.id,
+        name: prod?.name || 'Sản phẩm',
+        price: price,
+        quantity: item.quantity,
+        image: prod?.image || '',
+        total: price * item.quantity,
+      };
+    });
 
     try {
+      // 1. Ghi đơn hàng trực tiếp vào kho Supabase (bảng orders và order_items)
+      await createOrderInSupabase({
+        id: orderId,
+        customerName: formData.name,
+        customerPhone: formData.phone,
+        customerEmail: formData.email,
+        shippingAddress: `${formData.address}, ${formData.city}`,
+        paymentMethod: formData.paymentMethod.toUpperCase(),
+        notes: formData.notes,
+        subtotal: subtotal,
+        shippingFee: shippingFee,
+        discountAmount: 0,
+        total: grandTotal,
+        items: orderItems,
+      });
+
+      // 2. Ghi thêm vào localStorage để tương thích dữ liệu cục bộ
+      const newOrder = {
+        id: orderId,
+        customer: formData.name,
+        phone: formData.phone,
+        address: `${formData.address}, ${formData.city}`,
+        items: cart,
+        total: grandTotal,
+        paymentMethod: formData.paymentMethod,
+        notes: formData.notes,
+        status: 'Processing',
+        date: new Date().toLocaleDateString('vi-VN'),
+      };
       const stored = localStorage.getItem('mini_shop_orders');
       const orders = stored ? JSON.parse(stored) : [];
       orders.unshift(newOrder);
       localStorage.setItem('mini_shop_orders', JSON.stringify(orders));
-    } catch (err) {
-      console.error(err);
-    }
 
-    clearCart();
-    setSubmittedOrder({
-      id: orderId,
-      total: grandTotal,
-      itemsCount: totalCount,
-    });
-    showToast('Đặt hàng thành công! Mã đơn: ' + orderId, 'success');
+      // 3. Hoàn tất đơn hàng
+      clearCart();
+      setSubmittedOrder({
+        id: orderId,
+        total: grandTotal,
+        itemsCount: totalCount,
+      });
+      showToast('Đặt hàng thành công! Đơn hàng đã được lưu vào hệ thống.', 'success');
+    } catch (err: any) {
+      console.error('Lỗi khi lưu đơn hàng:', err);
+      showToast(
+        'Không thể lưu đơn hàng vào hệ thống: ' + (err?.message || 'Vui lòng thử lại!'),
+        'danger'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -372,8 +425,38 @@ export default function CheckoutPage() {
                 <span className="total-price">{formatPrice(grandTotal)}</span>
               </div>
 
-              <button type="submit" className="btn btn-primary btn-checkout">
-                Xác nhận đặt hàng
+              <button
+                type="submit"
+                className="btn btn-primary btn-checkout"
+                disabled={isSubmitting}
+                style={{
+                  opacity: isSubmitting ? 0.75 : 1,
+                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                }}
+              >
+                {isSubmitting ? (
+                  <>
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      style={{ animation: 'spin 1s linear infinite' }}
+                    >
+                      <circle cx="12" cy="12" r="10" strokeOpacity="0.25"></circle>
+                      <path d="M12 2a10 10 0 0 1 10 10"></path>
+                    </svg>
+                    <span>Đang xử lý đơn hàng...</span>
+                  </>
+                ) : (
+                  'Xác nhận đặt hàng'
+                )}
               </button>
             </div>
           </form>

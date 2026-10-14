@@ -3,137 +3,227 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/types/user';
 import { useToast } from './ToastContext';
-
-const AUTH_STORAGE_KEY = 'mini_shop_current_user';
-const USERS_STORAGE_KEY = 'mini_shop_registered_users';
-
-const MOCK_ADMIN_ACCOUNT: User = {
-  id: 'admin-001',
-  name: 'Quản trị viên Admin',
-  email: 'admin@minishop.com',
-  password: 'admin123',
-  role: 'admin',
-  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80',
-};
-
-const MOCK_CUSTOMER_ACCOUNT: User = {
-  id: 'user-001',
-  name: 'Nguyễn Văn Khách',
-  email: 'khachhang@gmail.com',
-  password: 'user123',
-  role: 'customer',
-  avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80',
-};
+import { createClient } from '@/utils/supabase/client';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => { success: boolean; message: string; user?: User };
-  register: (name: string, email: string, password: string, role?: 'customer' | 'admin') => { success: boolean; message: string; user?: User };
-  logout: () => void;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<{ success: boolean; message: string; user?: User }>;
+  register: (name: string, email: string, password: string, role?: 'customer' | 'admin') => Promise<{ success: boolean; message: string; user?: User }>;
+  logout: () => Promise<void>;
   isAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function mapSupabaseUserToUser(sbUser: SupabaseUser | null): User | null {
+  if (!sbUser) return null;
+
+  const metadata = sbUser.user_metadata || {};
+  const appMetadata = sbUser.app_metadata || {};
+  const name =
+    metadata.display_name ||
+    metadata.name ||
+    metadata.full_name ||
+    (sbUser.email ? sbUser.email.split('@')[0] : 'Khách hàng');
+
+  const role: 'admin' | 'customer' =
+    metadata.role === 'admin' || appMetadata.role === 'admin'
+      ? 'admin'
+      : 'customer';
+
+  const avatar =
+    metadata.avatar ||
+    metadata.avatar_url ||
+    (role === 'admin'
+      ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80'
+      : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80');
+
+  return {
+    id: sbUser.id,
+    name,
+    email: sbUser.email || '',
+    role,
+    avatar,
+  };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [loading, setLoading] = useState(true);
   const { showToast } = useToast();
 
+  const supabase = createClient();
+
   useEffect(() => {
-    try {
-      const existing = localStorage.getItem(USERS_STORAGE_KEY);
-      if (!existing) {
-        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify([MOCK_ADMIN_ACCOUNT, MOCK_CUSTOMER_ACCOUNT]));
+    let mounted = true;
+
+    // 1. Lấy phiên đăng nhập hiện tại từ Supabase (lưu trong session/cookies/localStorage)
+    const initSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.warn('Lỗi kiểm tra phiên Supabase:', error.message);
+        }
+        if (mounted) {
+          if (session?.user) {
+            setUser(mapSupabaseUserToUser(session.user));
+          } else {
+            setUser(null);
+          }
+        }
+      } catch (err) {
+        console.error('Lỗi khởi tạo xác thực:', err);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
       }
-      const currentUser = localStorage.getItem(AUTH_STORAGE_KEY);
-      if (currentUser) {
-        setUser(JSON.parse(currentUser));
+    };
+
+    initSession();
+
+    // 2. Lắng nghe sự kiện đăng nhập / đăng xuất / token refreshed từ Supabase
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (mounted) {
+        if (session?.user) {
+          setUser(mapSupabaseUserToUser(session.user));
+        } else {
+          setUser(null);
+        }
+        setLoading(false);
       }
-    } catch (e) {
-      console.error('Error initializing Auth context:', e);
-    }
-    setIsLoaded(true);
+    });
+
+    return () => {
+      mounted = false;
+      authListener?.subscription?.unsubscribe();
+    };
   }, []);
 
-  const getUsersPool = (): User[] => {
+  const login = async (
+    email: string,
+    password: string
+  ): Promise<{ success: boolean; message: string; user?: User }> => {
     try {
-      const existing = localStorage.getItem(USERS_STORAGE_KEY);
-      return existing ? JSON.parse(existing) : [MOCK_ADMIN_ACCOUNT, MOCK_CUSTOMER_ACCOUNT];
-    } catch (e) {
-      return [MOCK_ADMIN_ACCOUNT, MOCK_CUSTOMER_ACCOUNT];
+      const cleanEmail = email.trim();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password,
+      });
+
+      if (error) {
+        console.error('Supabase signInWithPassword error:', error);
+        let message = 'Email hoặc mật khẩu không chính xác!';
+        if (error.message.includes('Invalid login credentials')) {
+          message = 'Email hoặc mật khẩu không chính xác.';
+        } else if (error.message.includes('Email not confirmed')) {
+          message = 'Tài khoản chưa được kích hoạt xác nhận.';
+        } else {
+          message = error.message;
+        }
+        return { success: false, message };
+      }
+
+      if (data.user) {
+        const mappedUser = mapSupabaseUserToUser(data.user);
+        setUser(mappedUser);
+        if (mappedUser) {
+          showToast(`👋 Chào mừng quay trở lại, ${mappedUser.name}!`);
+        }
+        return { success: true, message: 'Đăng nhập thành công!', user: mappedUser || undefined };
+      }
+
+      return { success: false, message: 'Không thể đăng nhập. Vui lòng thử lại!' };
+    } catch (err: any) {
+      console.error('Lỗi khi đăng nhập:', err);
+      return { success: false, message: err?.message || 'Có lỗi xảy ra khi kết nối hệ thống.' };
     }
   };
 
-  const login = (email: string, password: string) => {
-    const users = getUsersPool();
-    const found = users.find(
-      (u) => u.email.toLowerCase().trim() === email.toLowerCase().trim() && u.password === password
-    );
+  const register = async (
+    name: string,
+    email: string,
+    password: string,
+    role: 'customer' | 'admin' = 'customer'
+  ): Promise<{ success: boolean; message: string; user?: User }> => {
+    try {
+      const cleanEmail = email.trim().toLowerCase();
+      const cleanName = name.trim();
 
-    if (found) {
-      const safeUser: User = {
-        id: found.id,
-        name: found.name,
-        email: found.email,
-        role: found.role,
-        avatar: found.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80',
-      };
-      setUser(safeUser);
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(safeUser));
-      showToast(`👋 Chào mừng quay trở lại, ${safeUser.name}!`);
-      return { success: true, message: 'Đăng nhập thành công!', user: safeUser };
+      const { data, error } = await supabase.auth.signUp({
+        email: cleanEmail,
+        password,
+        options: {
+          data: {
+            display_name: cleanName,
+            name: cleanName,
+            full_name: cleanName,
+            role,
+          },
+        },
+      });
+
+      if (error) {
+        console.error('Supabase signUp error:', error);
+        let message = error.message;
+        if (
+          error.message.includes('User already registered') ||
+          error.message.includes('already registered')
+        ) {
+          message = 'Email này đã được đăng ký tài khoản!';
+        } else if (error.message.includes('Password should be')) {
+          message = 'Mật khẩu phải có ít nhất 6 ký tự!';
+        } else if (error.message.includes('invalid') && error.message.includes('email')) {
+          message = 'Địa chỉ email không hợp lệ!';
+        }
+        return { success: false, message };
+      }
+
+      // Nếu Supabase chưa trả về session ngay, đăng nhập ngay lập tức bằng signInWithPassword
+      if (!data.session) {
+        const signInRes = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password,
+        });
+        if (signInRes.data.user) {
+          const mappedUser = mapSupabaseUserToUser(signInRes.data.user);
+          setUser(mappedUser);
+          showToast(`🎉 Đăng ký tài khoản thành công!`);
+          return { success: true, message: 'Đăng ký thành công!', user: mappedUser || undefined };
+        }
+      } else if (data.user) {
+        const mappedUser = mapSupabaseUserToUser(data.user);
+        setUser(mappedUser);
+        showToast(`🎉 Đăng ký tài khoản thành công!`);
+        return { success: true, message: 'Đăng ký thành công!', user: mappedUser || undefined };
+      }
+
+      showToast(`🎉 Đăng ký tài khoản thành công!`);
+      return { success: true, message: 'Đăng ký tài khoản thành công!' };
+    } catch (err: any) {
+      console.error('Lỗi khi đăng ký:', err);
+      return { success: false, message: err?.message || 'Có lỗi xảy ra khi tạo tài khoản.' };
     }
-    return { success: false, message: 'Email hoặc mật khẩu không chính xác!' };
   };
 
-  const register = (name: string, email: string, password: string, role: 'customer' | 'admin' = 'customer') => {
-    const users = getUsersPool();
-    const existing = users.find((u) => u.email.toLowerCase().trim() === email.toLowerCase().trim());
-
-    if (existing) {
-      return { success: false, message: 'Email này đã được đăng ký tài khoản!' };
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Lỗi khi đăng xuất:', err);
+    } finally {
+      setUser(null);
+      showToast('👋 Đã đăng xuất khỏi hệ thống.');
     }
-
-    const newUser: User = {
-      id: 'user-' + Date.now(),
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      password,
-      role,
-      avatar: role === 'admin'
-        ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80'
-        : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80',
-    };
-
-    users.push(newUser);
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-
-    const safeUser: User = {
-      id: newUser.id,
-      name: newUser.name,
-      email: newUser.email,
-      role: newUser.role,
-      avatar: newUser.avatar,
-    };
-
-    setUser(safeUser);
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(safeUser));
-    showToast(`🎉 Đăng ký tài khoản thành công!`);
-
-    return { success: true, message: 'Đăng ký tài khoản thành công!', user: safeUser };
-  };
-
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem(AUTH_STORAGE_KEY);
-    showToast('👋 Đã đăng xuất khỏi hệ thống.');
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        loading,
         login,
         register,
         logout,

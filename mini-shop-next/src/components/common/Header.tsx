@@ -146,7 +146,14 @@ export default function Header() {
                     className="user-menu-btn"
                     onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
                   >
-                    <img src={user.avatar} className="user-avatar-img" alt={user.name} />
+                    <img
+                      src={user.avatar}
+                      className="user-avatar-img"
+                      alt={user.name}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80';
+                      }}
+                    />
                     <span className="user-name-text">{user.name}</span>
                     <svg className="dropdown-caret" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
                   </button>
@@ -154,7 +161,14 @@ export default function Header() {
                   <div className={`user-dropdown-card ${isUserDropdownOpen ? 'active' : ''}`}>
                     <div className="user-dropdown-header">
                       <div className="user-info-row">
-                        <img src={user.avatar} className="user-avatar-lg" alt={user.name} />
+                        <img
+                          src={user.avatar}
+                          className="user-avatar-lg"
+                          alt={user.name}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80';
+                          }}
+                        />
                         <div>
                           <strong className="user-display-name">{user.name}</strong>
                           <span className={`user-role-tag ${user.role}`}>{isAdmin ? '🛡️ Admin' : '👤 Khách'}</span>
@@ -189,10 +203,6 @@ export default function Header() {
                 <Link href="/register" className={`auth-link ${pathname === '/register' ? 'active' : ''}`}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="17" y1="11" x2="23" y2="11"></line></svg>
                   <span>Đăng ký</span>
-                </Link>
-                <Link href="/admin" className={`btn btn-blue btn-admin-header ${pathname === '/admin' ? 'active' : ''}`}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                  <span>Admin</span>
                 </Link>
               </>
             )}
@@ -255,7 +265,30 @@ export default function Header() {
               <Link href="/register" className="btn btn-blue" style={{ flex: 1, textAlign: 'center' }}>Đăng ký</Link>
             </>
           ) : (
-            <button type="button" onClick={() => logout()} className="btn btn-outline" style={{ flex: 1, textAlign: 'center', color: 'var(--danger-color)' }}>Đăng xuất</button>
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.4rem 0.2rem' }}>
+                <img
+                  src={user.avatar}
+                  style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }}
+                  alt={user.name}
+                />
+                <div style={{ overflow: 'hidden' }}>
+                  <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{user.name}</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-light)', textOverflow: 'ellipsis', overflow: 'hidden' }}>{user.email}</div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  logout();
+                  setIsMobileMenuOpen(false);
+                }}
+                className="btn btn-outline"
+                style={{ width: '100%', textAlign: 'center', color: 'var(--danger-color)', borderColor: '#fca5a5' }}
+              >
+                Đăng xuất
+              </button>
+            </div>
           )}
         </div>
       </div>

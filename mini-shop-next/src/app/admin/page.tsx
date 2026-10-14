@@ -4,22 +4,112 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Product } from '@/types/product';
-import { INITIAL_PRODUCTS, formatPrice, getCategoryName } from '@/data/products';
+import { formatPrice, getCategoryName } from '@/data/products';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
+import {
+  getProductsFromSupabase,
+  createProductInSupabase,
+  updateProductInSupabase,
+  deleteProductInSupabase,
+} from '@/utils/supabase/products';
+import {
+  getOrdersFromSupabase,
+  updateOrderStatusInSupabase,
+  SupabaseOrderRow,
+} from '@/utils/supabase/orders';
+
+// Danh sách các hình ảnh có sẵn trong thư mục assets để admin chọn nhanh
+export const AVAILABLE_ASSET_IMAGES = [
+  { label: 'Sofa Bắc Âu 2 chỗ', path: '/assets/images/products/San_pham/sofa-phong-khach-original.webp' },
+  { label: 'Bộ bàn ăn gỗ Sồi', path: '/assets/images/products/San_pham/bo-ban-an-go-original.webp' },
+  { label: 'Đèn tre thủ công', path: '/assets/images/products/San_pham/den-tre-thu-cong-original.webp' },
+  { label: 'Đèn lồng tre', path: '/assets/images/products/San_pham/den-long-tre-original.webp' },
+  { label: 'Bình gốm trang trí', path: '/assets/images/products/San_pham/binh-gom-trang-tri-original.webp' },
+  { label: 'Bộ bình gốm Minimal', path: '/assets/images/products/San_pham/bo-binh-gom-minimal-original.webp' },
+  { label: 'Chậu cây để bàn', path: '/assets/images/products/San_pham/chau-cay-de-ban-original.webp' },
+  { label: 'Giỏ mây đan tự nhiên', path: '/assets/images/products/San_pham/gio-may-dan-original.webp' },
+  { label: 'Kệ gỗ 3 tầng đa năng', path: '/assets/images/products/San_pham/ke-go-trang-tri-original.webp' },
+  { label: 'Khay gỗ hoa văn', path: '/assets/images/products/San_pham/khay-go-hoa-van-original.webp' },
+  { label: 'Khay gỗ trang trí', path: '/assets/images/products/San_pham/khay-go-trang-tri-original.webp' },
+  { label: 'Tranh treo Macrame', path: '/assets/images/products/San_pham/tranh-treo-macrame-original.webp' },
+  { label: 'Hộp sơn mài mỹ nghệ', path: '/assets/images/products/đồ mỹ nghệ/hop-son-mai.webp' },
+  { label: 'Khay khảm trai cao cấp', path: '/assets/images/products/đồ mỹ nghệ/khay-kham-trai.webp' },
+];
 
 export default function AdminPage() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, loading, logout, isAdmin } = useAuth();
   const { showToast } = useToast();
+
+  // Chặn khu quản trị: Nếu chưa đăng nhập hoặc không phải admin, đưa về trang đăng nhập
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        showToast('Vui lòng đăng nhập tài khoản quản trị viên để tiếp tục!', 'warning');
+        router.replace('/login');
+      } else if (user.role !== 'admin') {
+        showToast('Tài khoản của bạn không có quyền quản trị viên! Đang chuyển về trang đăng nhập.', 'danger');
+        router.replace('/login');
+      }
+    }
+  }, [user, loading, router, showToast]);
 
   const [activeScreen, setActiveScreen] = useState<
     'dashboard' | 'products' | 'categories' | 'orders' | 'users' | 'settings'
   >('dashboard');
 
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  // Supabase Live Products State
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [isSavingProduct, setIsSavingProduct] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all');
+
+  // Supabase Live Orders State
+  const [supabaseOrders, setSupabaseOrders] = useState<SupabaseOrderRow[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+
+  // Tải danh sách sản phẩm trực tiếp từ kho Supabase
+  const fetchProductsFromSupabase = async () => {
+    setLoadingProducts(true);
+    try {
+      const data = await getProductsFromSupabase(true); // Lấy toàn bộ bao gồm cả Inactive
+      setProducts(data);
+    } catch (e) {
+      console.error('Error fetching products from Supabase:', e);
+      showToast('Không thể tải sản phẩm từ Supabase!', 'danger');
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
+  // Tải danh sách đơn hàng trực tiếp từ kho Supabase
+  const fetchOrdersFromSupabase = async () => {
+    setLoadingOrders(true);
+    try {
+      const data = await getOrdersFromSupabase();
+      setSupabaseOrders(data);
+    } catch (e) {
+      console.error('Error fetching orders from Supabase:', e);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProductsFromSupabase();
+    fetchOrdersFromSupabase();
+  }, []);
+
+  useEffect(() => {
+    if (activeScreen === 'orders' || activeScreen === 'dashboard') {
+      fetchOrdersFromSupabase();
+    }
+    if (activeScreen === 'products' || activeScreen === 'dashboard') {
+      fetchProductsFromSupabase();
+    }
+  }, [activeScreen]);
 
   // Form State
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
@@ -27,40 +117,15 @@ export default function AdminPage() {
   const [formName, setFormName] = useState('');
   const [formCategory, setFormCategory] = useState('noi-that');
   const [formPrice, setFormPrice] = useState<number | ''>('');
-  const [formImage, setFormImage] = useState('');
+  const [formImage, setFormImage] = useState(AVAILABLE_ASSET_IMAGES[0].path);
   const [formStatus, setFormStatus] = useState<'Active' | 'Inactive'>('Active');
   const [formShowOnHome, setFormShowOnHome] = useState(true);
   const [formDesc, setFormDesc] = useState('');
 
-  const [imageFileName, setImageFileName] = useState('');
+  const [imageFileName, setImageFileName] = useState(AVAILABLE_ASSET_IMAGES[0].label);
   const [imageFileWarning, setImageFileWarning] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Load products from localStorage
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('mini_shop_products');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setProducts(parsed);
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }, []);
-
-  // Sync products to localStorage
-  const saveProductsToStorage = (updated: Product[]) => {
-    setProducts(updated);
-    try {
-      localStorage.setItem('mini_shop_products', JSON.stringify(updated));
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
   // Filtered Products
   const filteredProducts = products.filter((p) => {
@@ -133,17 +198,33 @@ export default function AdminPage() {
     setFormDesc(p.desc);
     setImageFileName('');
     setActiveScreen('products');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Handle Delete product
-  const handleDeleteProduct = (id: number) => {
-    if (confirm('Bạn có chắc chắn muốn xóa sản phẩm này?')) {
-      const updated = products.filter((p) => p.id !== id);
-      saveProductsToStorage(updated);
-      showToast('Đã xóa sản phẩm thành công!', 'info');
+  // Handle Delete product with confirmation dialog
+  const handleDeleteProduct = async (id: number) => {
+    const prod = products.find((p) => p.id === id);
+    const prodName = prod ? `"${prod.name}" (ID #${prod.id})` : `#${id}`;
+
+    const confirmed = window.confirm(
+      `⚠️ XÁC NHẬN XÓA SẢN PHẨM\n\nBạn có chắc chắn muốn xóa vĩnh viễn sản phẩm ${prodName} khỏi cơ sở dữ liệu Supabase?\n\nSản phẩm sẽ bị gỡ bỏ khỏi cửa hàng và không thể hoàn tác!`
+    );
+
+    if (!confirmed) return;
+
+    setIsSavingProduct(true);
+    try {
+      await deleteProductInSupabase(id);
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+      showToast(`Đã xóa vĩnh viễn sản phẩm ${prodName} khỏi Supabase!`, 'success');
       if (formProductId === id) {
         resetForm();
       }
+    } catch (err: any) {
+      console.error('Lỗi khi xóa sản phẩm trên Supabase:', err);
+      showToast('Không thể xóa sản phẩm: ' + (err?.message || 'Có lỗi xảy ra'), 'danger');
+    } finally {
+      setIsSavingProduct(false);
     }
   };
 
@@ -154,62 +235,115 @@ export default function AdminPage() {
     setFormName('');
     setFormCategory('noi-that');
     setFormPrice('');
-    setFormImage('');
+    setFormImage(AVAILABLE_ASSET_IMAGES[0].path);
     setFormStatus('Active');
     setFormShowOnHome(true);
     setFormDesc('');
-    setImageFileName('');
+    setImageFileName(AVAILABLE_ASSET_IMAGES[0].label);
     setImageFileWarning('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // Save product
-  const handleFormSubmit = (e: React.FormEvent) => {
+  // Save product directly to Supabase
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim() || formPrice === '' || !formImage.trim()) {
-      showToast('Vui lòng điền đầy đủ tên, giá và ảnh sản phẩm!', 'warning');
+      showToast('Vui lòng điền đầy đủ tên, giá và chọn ảnh sản phẩm!', 'warning');
       return;
     }
 
-    if (formMode === 'create') {
-      const newId = Date.now();
-      const newProd: Product = {
-        id: newId,
-        name: formName.trim(),
-        category: formCategory,
-        price: Number(formPrice),
-        image: formImage.trim(),
-        desc: formDesc.trim() || 'Sản phẩm cao cấp tại Mini Shop',
-        badge: 'Mới',
-        badgeType: 'new',
-        status: formStatus,
-        showOnHome: formShowOnHome,
-      };
-      const updated = [newProd, ...products];
-      saveProductsToStorage(updated);
-      showToast('Thêm sản phẩm mới thành công!', 'success');
-      resetForm();
-    } else {
-      const updated = products.map((p) => {
-        if (p.id === formProductId) {
-          return {
-            ...p,
-            name: formName.trim(),
-            category: formCategory,
-            price: Number(formPrice),
-            image: formImage.trim(),
-            status: formStatus,
-            showOnHome: formShowOnHome,
-            desc: formDesc.trim(),
-          };
-        }
-        return p;
-      });
-      saveProductsToStorage(updated);
-      showToast('Cập nhật sản phẩm thành công!', 'success');
-      resetForm();
+    setIsSavingProduct(true);
+    try {
+      if (formMode === 'create') {
+        const created = await createProductInSupabase({
+          name: formName.trim(),
+          category: formCategory,
+          price: Number(formPrice),
+          image: formImage.trim(),
+          desc: formDesc.trim() || 'Sản phẩm cao cấp tại Mini Shop',
+          status: formStatus,
+          showOnHome: formShowOnHome,
+        });
+
+        setProducts((prev) => [created, ...prev]);
+        showToast(`🎉 Đã thêm sản phẩm "${created.name}" lên Supabase thành công!`, 'success');
+        resetForm();
+      } else if (formProductId !== null) {
+        const updated = await updateProductInSupabase(formProductId, {
+          name: formName.trim(),
+          category: formCategory,
+          price: Number(formPrice),
+          image: formImage.trim(),
+          desc: formDesc.trim(),
+          status: formStatus,
+          showOnHome: formShowOnHome,
+        });
+
+        setProducts((prev) =>
+          prev.map((p) => (p.id === formProductId ? updated : p))
+        );
+        showToast(`Đã cập nhật sản phẩm "${updated.name}" trên Supabase thành công!`, 'success');
+        resetForm();
+      }
+    } catch (err: any) {
+      console.error('Lỗi lưu sản phẩm lên Supabase:', err);
+      showToast('Lỗi lưu sản phẩm: ' + (err?.message || 'Có lỗi xảy ra'), 'danger');
+    } finally {
+      setIsSavingProduct(false);
     }
   };
+
+  // Handle changing order status directly in Supabase
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      await updateOrderStatusInSupabase(orderId, newStatus);
+      setSupabaseOrders((prev) =>
+        prev.map((ord) => (ord.id === orderId ? { ...ord, status: newStatus } : ord))
+      );
+      const labels: Record<string, string> = {
+        Processing: 'Mới / Đang xử lý',
+        Shipping: 'Đang giao hàng',
+        Delivered: 'Đã giao hàng',
+        Cancelled: 'Đã hủy',
+      };
+      showToast(`Đã chuyển đơn #${orderId} sang "${labels[newStatus] || newStatus}"!`, 'success');
+    } catch (err: any) {
+      console.error('Lỗi cập nhật trạng thái đơn:', err);
+      showToast('Không thể cập nhật trạng thái đơn: ' + (err?.message || 'Có lỗi xảy ra'), 'danger');
+    }
+  };
+
+  if (loading || !user || user.role !== 'admin') {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '1.25rem',
+          backgroundColor: '#f8fafc',
+          color: '#4b5563',
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+        }}
+      >
+        <div
+          style={{
+            width: '42px',
+            height: '42px',
+            border: '4px solid #e2e8f0',
+            borderTopColor: '#2563eb',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite',
+          }}
+        />
+        <p style={{ fontSize: '1rem', fontWeight: 500 }}>
+          {loading ? 'Đang kiểm tra quyền quản trị...' : 'Đang chuyển hướng về trang đăng nhập...'}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="admin-app-body" style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
@@ -786,6 +920,15 @@ export default function AdminPage() {
                         </span>
                       </div>
                       <div className="panel-header-actions">
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-sm"
+                          onClick={() => fetchProductsFromSupabase()}
+                          disabled={loadingProducts}
+                          title="Làm mới danh sách từ kho Supabase"
+                        >
+                          🔄 {loadingProducts ? 'Đang tải...' : 'Làm mới'}
+                        </button>
                         <select
                           className="form-select-sm"
                           value={selectedCategoryFilter}
@@ -823,7 +966,13 @@ export default function AdminPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {filteredProducts.length === 0 ? (
+                          {loadingProducts ? (
+                            <tr>
+                              <td colSpan={7} style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>
+                                ⏳ Đang tải dữ liệu sản phẩm trực tiếp từ kho Supabase...
+                              </td>
+                            </tr>
+                          ) : filteredProducts.length === 0 ? (
                             <tr>
                               <td colSpan={7} style={{ textAlign: 'center', padding: '2.5rem' }}>
                                 Không tìm thấy sản phẩm nào phù hợp.
@@ -958,104 +1107,185 @@ export default function AdminPage() {
                         />
                       </div>
 
-                      {/* Image Selection with Native File Input & URL option */}
+                      {/* Image Selection: Pre-existing Assets Picker */}
                       <div className="form-group">
-                        <label className="form-label">Hình ảnh sản phẩm *</label>
+                        <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span>Hình ảnh sản phẩm *</span>
+                          <span style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: 600 }}>
+                            📸 Ảnh có sẵn trong Assets
+                          </span>
+                        </label>
 
-                        {/* Hidden Native File Input */}
-                        <input
-                          type="file"
-                          ref={fileInputRef}
-                          accept="image/*"
-                          onChange={handleFileChange}
-                          style={{ display: 'none' }}
-                        />
+                        {/* Dropdown to select an asset */}
+                        <select
+                          className="form-control form-select"
+                          value={AVAILABLE_ASSET_IMAGES.some((a) => a.path === formImage) ? formImage : 'custom'}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val !== 'custom') {
+                              const found = AVAILABLE_ASSET_IMAGES.find((a) => a.path === val);
+                              setFormImage(val);
+                              setImageFileName(found ? found.label : '');
+                            }
+                          }}
+                          style={{ marginBottom: '0.5rem', fontWeight: 500 }}
+                        >
+                          <optgroup label="-- Chọn ảnh có sẵn từ thư mục assets --">
+                            {AVAILABLE_ASSET_IMAGES.map((img) => (
+                              <option key={img.path} value={img.path}>
+                                {img.label}
+                              </option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="-- Tùy chọn khác --">
+                            <option value="custom">Nhập đường dẫn tùy chỉnh hoặc tải lên...</option>
+                          </optgroup>
+                        </select>
 
-                        <div className="image-input-actions">
-                          <button
-                            type="button"
-                            className="btn btn-outline btn-sm"
+                        {/* Visual Assets Thumbnail Gallery */}
+                        <div style={{ marginBottom: '0.6rem' }}>
+                          <div style={{ fontSize: '0.78rem', color: '#475569', marginBottom: '0.35rem', fontWeight: 600 }}>
+                            Bấm chọn nhanh ảnh mẫu ({AVAILABLE_ASSET_IMAGES.length} ảnh):
+                          </div>
+                          <div
                             style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.4rem',
-                              fontWeight: 600,
-                              whiteSpace: 'nowrap',
+                              display: 'grid',
+                              gridTemplateColumns: 'repeat(4, 1fr)',
+                              gap: '6px',
+                              maxHeight: '170px',
+                              overflowY: 'auto',
+                              padding: '6px',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '8px',
+                              background: '#f8fafc',
                             }}
-                            onClick={() => fileInputRef.current?.click()}
                           >
-                            📁 Chọn tệp ảnh từ máy tính...
-                          </button>
+                            {AVAILABLE_ASSET_IMAGES.map((img) => {
+                              const isSelected = formImage === img.path;
+                              return (
+                                <div
+                                  key={img.path}
+                                  onClick={() => {
+                                    setFormImage(img.path);
+                                    setImageFileName(img.label);
+                                  }}
+                                  title={`${img.label}\n${img.path}`}
+                                  style={{
+                                    cursor: 'pointer',
+                                    border: isSelected ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                                    borderRadius: '6px',
+                                    padding: '3px',
+                                    background: isSelected ? '#eff6ff' : '#fff',
+                                    position: 'relative',
+                                    textAlign: 'center',
+                                    transition: 'all 0.15s ease',
+                                    boxShadow: isSelected ? '0 0 0 1px #2563eb' : 'none',
+                                  }}
+                                >
+                                  <img
+                                    src={img.path}
+                                    alt={img.label}
+                                    style={{
+                                      width: '100%',
+                                      height: '42px',
+                                      objectFit: 'cover',
+                                      borderRadius: '4px',
+                                    }}
+                                  />
+                                  <div
+                                    style={{
+                                      fontSize: '0.62rem',
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      color: isSelected ? '#1d4ed8' : '#64748b',
+                                      fontWeight: isSelected ? 700 : 500,
+                                      marginTop: '2px',
+                                    }}
+                                  >
+                                    {img.label}
+                                  </div>
+                                  {isSelected && (
+                                    <span
+                                      style={{
+                                        position: 'absolute',
+                                        top: '3px',
+                                        right: '3px',
+                                        background: '#2563eb',
+                                        color: '#fff',
+                                        borderRadius: '50%',
+                                        width: '15px',
+                                        height: '15px',
+                                        fontSize: '9px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontWeight: 'bold',
+                                      }}
+                                    >
+                                      ✓
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
 
-                        {/* Input URL fallback */}
+                        {/* Selected Preview Box */}
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            padding: '8px 12px',
+                            background: '#ffffff',
+                            borderRadius: '8px',
+                            border: '1px solid #cbd5e1',
+                            marginBottom: '0.5rem',
+                          }}
+                        >
+                          <img
+                            src={formImage}
+                            alt="Xem trước"
+                            style={{
+                              width: '56px',
+                              height: '56px',
+                              objectFit: 'cover',
+                              borderRadius: '6px',
+                              border: '1px solid #e2e8f0',
+                            }}
+                          />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#0f172a' }}>
+                              ✓ {imageFileName || 'Ảnh đã chọn'}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: '0.72rem',
+                                color: '#64748b',
+                                wordBreak: 'break-all',
+                                marginTop: '2px',
+                              }}
+                            >
+                              {formImage}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Custom path / URL input fallback */}
                         <input
                           type="text"
                           className="form-control"
-                          placeholder="Hoặc dán URL đường dẫn ảnh tại đây..."
+                          placeholder="Hoặc dán URL/đường dẫn ảnh assets tại đây..."
                           value={formImage}
-                          onChange={(e) => setFormImage(e.target.value)}
-                          style={{ marginTop: '0.4rem', fontSize: '0.85rem' }}
-                        />
-
-                        {/* Drag and Drop Box & Preview */}
-                        <div
-                          className="img-upload-box"
-                          onDragOver={handleDragOver}
-                          onDrop={handleDrop}
-                          onClick={() => fileInputRef.current?.click()}
-                          style={{
-                            minHeight: '130px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            marginTop: '0.5rem',
+                          onChange={(e) => {
+                            setFormImage(e.target.value);
+                            const found = AVAILABLE_ASSET_IMAGES.find((a) => a.path === e.target.value);
+                            setImageFileName(found ? found.label : 'Ảnh tùy chỉnh');
                           }}
-                        >
-                          {formImage ? (
-                            <div style={{ textAlign: 'center' }}>
-                              <img
-                                src={formImage}
-                                alt="Xem trước"
-                                style={{
-                                  maxHeight: '110px',
-                                  maxWidth: '100%',
-                                  borderRadius: '8px',
-                                  objectFit: 'contain',
-                                  margin: '0 auto 6px',
-                                  border: '1px solid #cbd5e1',
-                                }}
-                              />
-                              <span style={{ fontSize: '0.78rem', color: '#16a34a', fontWeight: 600, display: 'block' }}>
-                                ✓ {imageFileName || 'Đã có ảnh sản phẩm'} (Nhấp để đổi)
-                              </span>
-                            </div>
-                          ) : (
-                            <div>
-                              <svg
-                                width="32"
-                                height="32"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                style={{ color: '#94a3b8', margin: '0 auto 6px', display: 'block' }}
-                              >
-                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                                <polyline points="21 15 16 10 5 21"></polyline>
-                              </svg>
-                              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155', display: 'block' }}>
-                                Bấm để chọn ảnh từ máy tính
-                              </span>
-                              <span style={{ fontSize: '0.78rem', color: '#64748b', display: 'block', marginTop: '2px' }}>
-                                Hoặc kéo & thả file ảnh trực tiếp vào đây
-                              </span>
-                            </div>
-                          )}
-                        </div>
+                          style={{ fontSize: '0.8rem' }}
+                        />
                       </div>
 
                       <div className="form-group">
@@ -1130,13 +1360,25 @@ export default function AdminPage() {
                       </div>
 
                       <div className="form-actions-row">
-                        <button type="submit" className="btn btn-primary btn-block">
-                          <span>{formMode === 'create' ? 'Lưu sản phẩm' : 'Cập nhật'}</span>
+                        <button
+                          type="submit"
+                          className="btn btn-primary btn-block"
+                          disabled={isSavingProduct}
+                          style={{ opacity: isSavingProduct ? 0.7 : 1 }}
+                        >
+                          <span>
+                            {isSavingProduct
+                              ? '⏳ Đang lưu vào Supabase...'
+                              : formMode === 'create'
+                              ? '💾 Thêm sản phẩm vào Supabase'
+                              : '💾 Cập nhật lên Supabase'}
+                          </span>
                         </button>
                         <button
                           type="button"
                           className="btn btn-outline"
                           onClick={() => resetForm()}
+                          disabled={isSavingProduct}
                         >
                           Hủy
                         </button>
@@ -1152,9 +1394,24 @@ export default function AdminPage() {
               <div className="panel-card">
                 <div className="panel-header">
                   <div>
-                    <h2 className="panel-title">Quản lý Đơn hàng (128)</h2>
-                    <span className="panel-sub">Theo dõi các đơn mua của khách hàng</span>
+                    <h2 className="panel-title">
+                      Quản lý Đơn hàng ({supabaseOrders.length})
+                    </h2>
+                    <span className="panel-sub">Dữ liệu đơn hàng đồng bộ trực tiếp từ Supabase</span>
                   </div>
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    onClick={async () => {
+                      setLoadingOrders(true);
+                      const data = await getOrdersFromSupabase();
+                      setSupabaseOrders(data);
+                      setLoadingOrders(false);
+                      showToast('Đã làm mới danh sách đơn hàng!', 'info');
+                    }}
+                  >
+                    🔄 Làm mới
+                  </button>
                 </div>
 
                 <div className="table-responsive">
@@ -1164,47 +1421,157 @@ export default function AdminPage() {
                         <th>Mã đơn</th>
                         <th>Khách hàng</th>
                         <th>Địa chỉ</th>
+                        <th>Các món</th>
                         <th>Tổng tiền</th>
-                        <th>Phương thức</th>
-                        <th>Trạng thái</th>
-                        <th>Hành động</th>
+                        <th>Thanh toán</th>
+                        <th>Trạng thái (Supabase)</th>
+                        <th>Thao tác đổi trạng thái</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr>
-                        <td><strong>#ORD-849201</strong></td>
-                        <td>Nguyễn Văn An<br/><small style={{ color: '#64748b' }}>0912 345 678</small></td>
-                        <td>Hà Nội</td>
-                        <td><strong style={{ color: '#16a34a' }}>799.000 đ</strong></td>
-                        <td>COD</td>
-                        <td><span className="badge-status status-info">Đang xử lý</span></td>
-                        <td>
-                          <button
-                            type="button"
-                            className="btn-table-action"
-                            onClick={() => showToast('Đã xác nhận đơn hàng!', 'success')}
-                          >
-                            Xác nhận
-                          </button>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td><strong>#ORD-739210</strong></td>
-                        <td>Trần Thị Hoa<br/><small style={{ color: '#64748b' }}>0988 123 456</small></td>
-                        <td>TP. Hồ Chí Minh</td>
-                        <td><strong style={{ color: '#16a34a' }}>1.250.000 đ</strong></td>
-                        <td>VietQR</td>
-                        <td><span className="badge-status status-success">Đã hoàn thành</span></td>
-                        <td>
-                          <button
-                            type="button"
-                            className="btn-table-action"
-                            onClick={() => showToast('Xem chi tiết đơn hàng', 'info')}
-                          >
-                            Chi tiết
-                          </button>
-                        </td>
-                      </tr>
+                      {loadingOrders ? (
+                        <tr>
+                          <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                            ⏳ Đang tải đơn hàng thật từ kho Supabase...
+                          </td>
+                        </tr>
+                      ) : supabaseOrders.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                            Chưa có đơn hàng nào trong hệ thống Supabase.
+                          </td>
+                        </tr>
+                      ) : (
+                        supabaseOrders.map((ord) => {
+                          const itemsList = Array.isArray(ord.items) ? ord.items : [];
+                          return (
+                            <tr key={ord.id}>
+                              <td><strong>#{ord.id}</strong></td>
+                              <td>
+                                <strong>{ord.customer_name}</strong>
+                                <br />
+                                <small style={{ color: '#64748b' }}>{ord.customer_phone}</small>
+                              </td>
+                              <td style={{ maxWidth: '180px' }}>
+                                <small>{ord.shipping_address}</small>
+                              </td>
+                              <td style={{ maxWidth: '220px' }}>
+                                {itemsList.length > 0 ? (
+                                  <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.85rem' }}>
+                                    {itemsList.map((it: any, idx: number) => (
+                                      <li key={idx}>
+                                        {it.name || 'Sản phẩm'} <strong style={{ color: 'var(--primary-color)' }}>x{it.quantity}</strong>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>--</span>
+                                )}
+                              </td>
+                              <td>
+                                <strong style={{ color: '#16a34a' }}>
+                                  {formatPrice(ord.total)}
+                                </strong>
+                              </td>
+                              <td>
+                                <span className="cat-pill" style={{ fontSize: '0.78rem' }}>
+                                  {ord.payment_method || 'COD'}
+                                </span>
+                              </td>
+                              <td>
+                                {/* Interactive status selector directly modifying Supabase */}
+                                <select
+                                  value={ord.status || 'Processing'}
+                                  onChange={(e) => handleUpdateOrderStatus(ord.id, e.target.value)}
+                                  style={{
+                                    padding: '5px 8px',
+                                    fontSize: '0.82rem',
+                                    borderRadius: '6px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    border: '1px solid #cbd5e1',
+                                    background:
+                                      ord.status === 'Delivered' || ord.status === 'Completed'
+                                        ? '#f0fdf4'
+                                        : ord.status === 'Shipping'
+                                        ? '#eff6ff'
+                                        : ord.status === 'Cancelled'
+                                        ? '#fef2f2'
+                                        : '#fefce8',
+                                    color:
+                                      ord.status === 'Delivered' || ord.status === 'Completed'
+                                        ? '#166534'
+                                        : ord.status === 'Shipping'
+                                        ? '#1d4ed8'
+                                        : ord.status === 'Cancelled'
+                                        ? '#991b1b'
+                                        : '#854d0e',
+                                  }}
+                                  title="Chọn trạng thái để cập nhật vào Supabase"
+                                >
+                                  <option value="Processing">🟡 Mới (Chờ xử lý)</option>
+                                  <option value="Shipping">🚚 Đang giao hàng</option>
+                                  <option value="Delivered">✅ Đã giao hàng</option>
+                                  <option value="Cancelled">❌ Đã hủy</option>
+                                </select>
+                              </td>
+                              <td>
+                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                  {(ord.status === 'Processing' || !ord.status) && (
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-outline"
+                                      style={{
+                                        fontSize: '0.74rem',
+                                        padding: '4px 8px',
+                                        borderColor: '#3b82f6',
+                                        color: '#1d4ed8',
+                                        whiteSpace: 'nowrap',
+                                        fontWeight: 600,
+                                      }}
+                                      onClick={() => handleUpdateOrderStatus(ord.id, 'Shipping')}
+                                      title="Chuyển trạng thái sang Đang giao"
+                                    >
+                                      🚚 Giao hàng
+                                    </button>
+                                  )}
+                                  {ord.status === 'Shipping' && (
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-primary"
+                                      style={{
+                                        fontSize: '0.74rem',
+                                        padding: '4px 8px',
+                                        background: '#16a34a',
+                                        borderColor: '#16a34a',
+                                        whiteSpace: 'nowrap',
+                                        fontWeight: 600,
+                                      }}
+                                      onClick={() => handleUpdateOrderStatus(ord.id, 'Delivered')}
+                                      title="Chuyển trạng thái sang Đã giao"
+                                    >
+                                      ✅ Đã giao
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    className="btn-table-action"
+                                    onClick={() =>
+                                      showToast(
+                                        `Đơn #${ord.id}: ${ord.customer_name} (${formatPrice(ord.total)}) - Trạng thái: ${ord.status}`,
+                                        'info'
+                                      )
+                                    }
+                                    title="Xem chi tiết đơn"
+                                  >
+                                    👁️ Chi tiết
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
                     </tbody>
                   </table>
                 </div>

@@ -87,11 +87,23 @@ function renderCheckoutSummary() {
   if (grandTotalEl) grandTotalEl.textContent = formatPrice(grandTotal);
 }
 
-function handleOrderSubmit(e) {
+// Supabase Configuration
+const SUPABASE_URL = 'https://zaalwzrtahvzlvlfitqx.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_VLebJXvySVZMFfXSZCzniQ_ClML7RlB';
+
+function getSupabaseClient() {
+  if (window.supabase && typeof window.supabase.createClient === 'function') {
+    return window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  }
+  return null;
+}
+
+async function handleOrderSubmit(e) {
   e.preventDefault();
 
   const fullname = document.getElementById('customerName')?.value.trim();
   const phone = document.getElementById('customerPhone')?.value.trim();
+  const email = document.getElementById('customerEmail')?.value.trim();
   const address = document.getElementById('customerAddress')?.value.trim();
   const city = document.getElementById('customerCity')?.value.trim();
   const notes = document.getElementById('customerNotes')?.value.trim();
@@ -108,42 +120,151 @@ function handleOrderSubmit(e) {
     return;
   }
 
+  const submitBtn = document.querySelector('.btn-submit-order');
+  const originalBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation: spin 1s linear infinite;">
+        <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+        <path d="M12 2a10 10 0 0 1 10 10"></path>
+      </svg>
+      <span>Đang lưu đơn hàng...</span>
+    `;
+  }
+
   const subtotal = getCartSubtotal();
   const shippingFee = subtotal >= 500000 ? 0 : 30000;
   const totalAmount = subtotal + shippingFee;
 
-  // Generate random Order Code e.g. MS-839214
-  const orderCode = `MS-${Math.floor(100000 + Math.random() * 900000)}`;
+  // Generate random Order Code e.g. ORD-839214
+  const orderCode = `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
 
-  // Populate Order Success Modal
-  const modalOrderCode = document.getElementById('modalOrderCode');
-  const modalCustomerName = document.getElementById('modalCustomerName');
-  const modalCustomerPhone = document.getElementById('modalCustomerPhone');
-  const modalCustomerAddress = document.getElementById('modalCustomerAddress');
-  const modalPaymentMethod = document.getElementById('modalPaymentMethod');
-  const modalTotalAmount = document.getElementById('modalTotalAmount');
+  const paymentNames = {
+    'cod': 'Thanh toán khi nhận hàng (COD)',
+    'bank': 'Chuyển khoản ngân hàng (VietQR)',
+    'momo': 'Ví điện tử MoMo / ZaloPay'
+  };
 
-  if (modalOrderCode) modalOrderCode.textContent = orderCode;
-  if (modalCustomerName) modalCustomerName.textContent = fullname;
-  if (modalCustomerPhone) modalCustomerPhone.textContent = phone;
-  if (modalCustomerAddress) modalCustomerAddress.textContent = `${address}, ${city}`;
-  if (modalPaymentMethod) {
-    const paymentNames = {
-      'cod': 'Thanh toán khi nhận hàng (COD)',
-      'bank': 'Chuyển khoản ngân hàng QR-Code',
-      'momo': 'Ví điện tử MoMo / ZaloPay'
+  const paymentCode = paymentMethod === 'bank' ? 'VietQR' : (paymentMethod === 'momo' ? 'MoMo' : 'COD');
+
+  // Chuẩn bị danh sách các món hàng (items)
+  const items = cart.map(item => {
+    const product = typeof getProductById === 'function' ? getProductById(item.id) : null;
+    const price = product ? product.price : 0;
+    const name = product ? (product.nameEn || product.name) : ('Sản phẩm #' + item.id);
+    return {
+      id: item.id,
+      product_id: item.id,
+      name: name,
+      price: price,
+      quantity: item.quantity,
+      image: product?.image || '',
+      total: price * item.quantity
     };
-    modalPaymentMethod.textContent = paymentNames[paymentMethod] || 'COD';
-  }
-  if (modalTotalAmount) modalTotalAmount.textContent = formatPrice(totalAmount);
+  });
 
-  // Clear Shopping Cart in localStorage
-  clearCart();
+  try {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      // 1. Ghi đơn hàng vào bảng orders trong Supabase (chứa cả cột items jsonb)
+      const orderPayload = {
+        id: orderCode,
+        customer_name: fullname,
+        customer_phone: phone,
+        customer_email: email || null,
+        shipping_address: `${address}, ${city}`,
+        payment_method: paymentCode,
+        notes: notes || null,
+        subtotal: subtotal,
+        shipping_fee: shippingFee,
+        discount_amount: 0,
+        total: totalAmount,
+        status: 'Processing',
+        items: items
+      };
 
-  // Show Modal Overlay
-  const modal = document.getElementById('orderSuccessModal');
-  if (modal) {
-    modal.classList.add('show');
+      const { error: orderError } = await supabase
+        .from('orders')
+        .insert([orderPayload]);
+
+      if (orderError) {
+        throw new Error(orderError.message || 'Lỗi khi ghi đơn hàng vào Supabase');
+      }
+
+      // 2. Ghi chi tiết từng sản phẩm vào bảng order_items
+      const orderItemsRows = items.map(it => ({
+        order_id: orderCode,
+        product_id: it.product_id,
+        product_name: it.name,
+        price: it.price,
+        quantity: it.quantity,
+        image: it.image || null
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItemsRows);
+
+      if (itemsError) {
+        console.warn('Lỗi ghi order_items (đơn chính đã tạo thành công):', itemsError);
+      }
+    } else {
+      console.warn('Không tìm thấy Supabase client, đơn chỉ được lưu cục bộ.');
+    }
+
+    // Populate Order Success Modal
+    const modalOrderCode = document.getElementById('modalOrderCode');
+    const modalCustomerName = document.getElementById('modalCustomerName');
+    const modalCustomerPhone = document.getElementById('modalCustomerPhone');
+    const modalCustomerAddress = document.getElementById('modalCustomerAddress');
+    const modalPaymentMethod = document.getElementById('modalPaymentMethod');
+    const modalTotalAmount = document.getElementById('modalTotalAmount');
+
+    if (modalOrderCode) modalOrderCode.textContent = orderCode;
+    if (modalCustomerName) modalCustomerName.textContent = fullname;
+    if (modalCustomerPhone) modalCustomerPhone.textContent = phone;
+    if (modalCustomerAddress) modalCustomerAddress.textContent = `${address}, ${city}`;
+    if (modalPaymentMethod) modalPaymentMethod.textContent = paymentNames[paymentMethod] || 'COD';
+    if (modalTotalAmount) modalTotalAmount.textContent = formatPrice(totalAmount);
+
+    // Lưu vào localStorage để hỗ trợ admin offline
+    try {
+      const stored = localStorage.getItem('mini_shop_orders');
+      const orders = stored ? JSON.parse(stored) : [];
+      orders.unshift({
+        id: orderCode,
+        customer: fullname,
+        phone: phone,
+        address: `${address}, ${city}`,
+        items: cart,
+        total: totalAmount,
+        paymentMethod: paymentCode,
+        notes: notes,
+        status: 'Processing',
+        date: new Date().toLocaleDateString('vi-VN')
+      });
+      localStorage.setItem('mini_shop_orders', JSON.stringify(orders));
+    } catch (e) {
+      console.warn(e);
+    }
+
+    // Clear Shopping Cart in localStorage
+    clearCart();
+
+    // Show Modal Overlay
+    const modal = document.getElementById('orderSuccessModal');
+    if (modal) {
+      modal.classList.add('show');
+    }
+  } catch (err) {
+    console.error('Lỗi khi gửi đơn hàng:', err);
+    alert('Không thể tạo đơn hàng trên Supabase: ' + (err.message || 'Vui lòng thử lại sau!'));
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnHtml;
+    }
   }
 }
 

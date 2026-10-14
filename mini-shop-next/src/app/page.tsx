@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { INITIAL_PRODUCTS } from '@/data/products';
+import { Product } from '@/types/product';
+import { getProductsFromSupabase } from '@/utils/supabase/products';
 import ProductCard from '@/components/product/ProductCard';
 
 const CATEGORIES = [
@@ -92,33 +92,26 @@ const CATEGORIES = [
 
 export default function HomePage() {
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadProducts() {
+      setLoading(true);
+      const data = await getProductsFromSupabase();
+      setProducts(data);
+      setLoading(false);
+    }
+    loadProducts();
+  }, []);
 
   const displayedProducts = useMemo(() => {
-    // Check localStorage products first if any was added/modified by admin
-    if (typeof window !== 'undefined') {
-      try {
-        const stored = localStorage.getItem('mini_shop_products');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            let list = parsed.filter((p) => p.showOnHome !== false && p.status !== 'Inactive');
-            if (selectedCategory !== 'all') {
-              list = list.filter((p) => p.category === selectedCategory);
-            }
-            return list;
-          }
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
-    let list = INITIAL_PRODUCTS.filter((p) => p.showOnHome !== false && p.status !== 'Inactive');
+    let list = products.filter((p) => p.showOnHome !== false && p.status !== 'Inactive');
     if (selectedCategory !== 'all') {
       list = list.filter((p) => p.category === selectedCategory);
     }
     return list;
-  }, [selectedCategory]);
+  }, [products, selectedCategory]);
 
   return (
     <>
@@ -221,7 +214,11 @@ export default function HomePage() {
           </div>
 
           <div className="product-grid" id="featuredProductGrid">
-            {displayedProducts.length === 0 ? (
+            {loading ? (
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
+                <p style={{ fontSize: '1rem', fontWeight: 500 }}>Đang tải sản phẩm từ cửa hàng...</p>
+              </div>
+            ) : displayedProducts.length === 0 ? (
               <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
                 <p style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.5rem' }}>
                   Không tìm thấy sản phẩm phù hợp

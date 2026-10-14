@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Product } from '@/types/product';
 import { formatPrice, getCategoryName, INITIAL_PRODUCTS } from '@/data/products';
+import { getProductByIdFromSupabase } from '@/utils/supabase/products';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import ProductCard from '@/components/product/ProductCard';
@@ -70,26 +71,34 @@ export default function ProductDetailClient({ initialProduct, productId }: Props
   const [isClientLoaded, setIsClientLoaded] = useState(false);
 
   useEffect(() => {
-    setIsClientLoaded(true);
-    try {
-      const stored = localStorage.getItem('mini_shop_products');
-      if (stored) {
-        const list: Product[] = JSON.parse(stored);
-        const found = list.find((p) => p.id === productId);
-        if (found) {
-          setCurrentProduct(found);
-          setSelectedImg(found.image);
+    let mounted = true;
+    async function loadProduct() {
+      try {
+        const spProduct = await getProductByIdFromSupabase(productId);
+        if (mounted && spProduct) {
+          setCurrentProduct(spProduct);
+          setSelectedImg(spProduct.image);
+          setIsClientLoaded(true);
           return;
         }
+      } catch (e) {
+        console.error('Error fetching product from Supabase:', e);
       }
-    } catch (e) {
-      console.error('Error reading localStorage for product detail:', e);
+
+      if (mounted && initialProduct) {
+        setCurrentProduct(initialProduct);
+        setSelectedImg(initialProduct.image);
+      }
+      if (mounted) {
+        setIsClientLoaded(true);
+      }
     }
 
-    if (initialProduct) {
-      setCurrentProduct(initialProduct);
-      setSelectedImg(initialProduct.image);
-    }
+    loadProduct();
+
+    return () => {
+      mounted = false;
+    };
   }, [productId, initialProduct]);
 
   const product = currentProduct;

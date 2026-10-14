@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useMemo, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { INITIAL_PRODUCTS } from '@/data/products';
+import { Product } from '@/types/product';
+import { getProductsFromSupabase } from '@/utils/supabase/products';
 import ProductCard from '@/components/product/ProductCard';
 
 function ProductsContent() {
@@ -12,11 +13,24 @@ function ProductsContent() {
   const initialSort = searchParams.get('sort') === 'new' ? 'newest' : 'newest';
   const initialSale = searchParams.get('sale') === 'true';
 
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [selectedPriceRange, setSelectedPriceRange] = useState('all');
   const [inStockOnly, setInStockOnly] = useState(false);
   const [currentSort, setCurrentSort] = useState(initialSort);
   const [searchQuery, setSearchQuery] = useState(initialSearch);
+
+  useEffect(() => {
+    async function loadProducts() {
+      setLoading(true);
+      const data = await getProductsFromSupabase();
+      setProducts(data);
+      setLoading(false);
+    }
+    loadProducts();
+  }, []);
 
   const categoriesList = [
     { id: 'all', name: 'Tất cả sản phẩm', icon: (
@@ -40,7 +54,7 @@ function ProductsContent() {
   ];
 
   const filteredProducts = useMemo(() => {
-    let list = [...INITIAL_PRODUCTS].filter((p) => p.status !== 'Inactive');
+    let list = [...products].filter((p) => p.status !== 'Inactive');
 
     if (selectedCategory !== 'all') {
       list = list.filter((p) => p.category === selectedCategory);
@@ -80,7 +94,7 @@ function ProductsContent() {
     }
 
     return list;
-  }, [selectedCategory, selectedPriceRange, inStockOnly, searchQuery, currentSort, initialSale]);
+  }, [products, selectedCategory, selectedPriceRange, inStockOnly, searchQuery, currentSort, initialSale]);
 
   const resetFilters = () => {
     setSelectedCategory('all');
@@ -99,8 +113,8 @@ function ProductsContent() {
             <ul className="filter-list" id="categoryFilterList">
               {categoriesList.map((cat) => {
                 const count = cat.id === 'all'
-                  ? INITIAL_PRODUCTS.length
-                  : INITIAL_PRODUCTS.filter((p) => p.category === cat.id).length;
+                  ? products.length
+                  : products.filter((p) => p.category === cat.id).length;
                 const isActive = cat.id === selectedCategory;
 
                 return (
@@ -195,7 +209,18 @@ function ProductsContent() {
           </div>
 
           <div className="product-grid" id="shopProductGrid">
-            {filteredProducts.length > 0 ? (
+            {loading ? (
+              <div
+                style={{
+                  gridColumn: '1 / -1',
+                  textAlign: 'center',
+                  padding: '4rem 1rem',
+                  color: 'var(--text-muted)',
+                }}
+              >
+                <p style={{ fontSize: '1rem', fontWeight: 500 }}>Đang tải danh sách sản phẩm từ Supabase...</p>
+              </div>
+            ) : filteredProducts.length > 0 ? (
               filteredProducts.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))
