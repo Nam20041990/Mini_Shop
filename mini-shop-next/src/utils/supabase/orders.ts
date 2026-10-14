@@ -49,11 +49,13 @@ export async function createOrderInSupabase(input: CreateOrderInput): Promise<Su
   const supabase = createClient();
   const orderId = input.id || 'ORD-' + Math.floor(100000 + Math.random() * 900000);
 
-  const orderPayload = {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const orderPayload: any = {
     id: orderId,
     customer_name: input.customerName.trim(),
     customer_phone: input.customerPhone.trim(),
-    customer_email: input.customerEmail?.trim() || null,
+    customer_email: input.customerEmail?.trim() || user?.email || null,
     shipping_address: input.shippingAddress.trim(),
     payment_method: input.paymentMethod || 'COD',
     notes: input.notes?.trim() || null,
@@ -64,6 +66,10 @@ export async function createOrderInSupabase(input: CreateOrderInput): Promise<Su
     status: 'Processing',
     items: input.items, // Cột jsonb chứa danh sách các món
   };
+
+  if (user) {
+    orderPayload.user_id = user.id;
+  }
 
   // 1. Ghi vào bảng orders
   const { data: insertedOrder, error: orderError } = await supabase
