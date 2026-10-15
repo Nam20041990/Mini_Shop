@@ -10,6 +10,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; message: string; user?: User }>;
+  loginWithGoogle: () => Promise<{ success: boolean; message: string }>;
   register: (name: string, email: string, password: string, role?: 'customer' | 'admin') => Promise<{ success: boolean; message: string; user?: User }>;
   logout: () => Promise<void>;
   isAdmin: boolean;
@@ -17,19 +18,25 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const PREDEFINED_ADMIN_EMAILS = ['trannamnb202@gmail.com', 'admin@minishop.com'];
+
 function mapSupabaseUserToUser(sbUser: SupabaseUser | null): User | null {
   if (!sbUser) return null;
 
   const metadata = sbUser.user_metadata || {};
   const appMetadata = sbUser.app_metadata || {};
+  const userEmail = sbUser.email ? sbUser.email.toLowerCase().trim() : '';
+
   const name =
     metadata.display_name ||
     metadata.name ||
     metadata.full_name ||
-    (sbUser.email ? sbUser.email.split('@')[0] : 'Khách hàng');
+    (userEmail ? userEmail.split('@')[0] : 'Khách hàng');
+
+  const isPredefinedAdmin = PREDEFINED_ADMIN_EMAILS.includes(userEmail);
 
   const role: 'admin' | 'customer' =
-    metadata.role === 'admin' || appMetadata.role === 'admin'
+    metadata.role === 'admin' || appMetadata.role === 'admin' || isPredefinedAdmin
       ? 'admin'
       : 'customer';
 
@@ -107,19 +114,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     password: string
   ): Promise<{ success: boolean; message: string; user?: User }> => {
     try {
-      const cleanEmail = email.trim();
+      const cleanEmail = email.trim().toLowerCase();
+
+      console.log('🔄 [AuthContext login] Bắt đầu xác thực Supabase Auth:', {
+        email: cleanEmail,
+        passwordProvided: Boolean(password),
+        passwordLength: password ? password.length : 0,
+      });
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
         password,
       });
 
       if (error) {
-        console.error('Supabase signInWithPassword error:', error);
+        console.error('❌ [Supabase signInWithPassword Error]:', {
+          message: error.message,
+          status: error.status,
+          name: error.name,
+          code: (error as any).code,
+          details: (error as any).details,
+          attemptedEmail: cleanEmail,
+        });
+
         let message = 'Email hoặc mật khẩu không chính xác!';
         if (error.message.includes('Invalid login credentials')) {
-          message = 'Email hoặc mật khẩu không chính xác.';
+          message = 'Email hoặc mật khẩu không chính xác (Invalid login credentials).';
         } else if (error.message.includes('Email not confirmed')) {
-          message = 'Tài khoản chưa được kích hoạt xác nhận.';
+          message = 'Tài khoản chưa được kích hoạt xác nhận qua email.';
         } else {
           message = error.message;
         }
@@ -129,6 +151,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data.user) {
         const mappedUser = mapSupabaseUserToUser(data.user);
         setUser(mappedUser);
+
+        console.log('✅ [AuthContext login] Đăng nhập Supabase thành công:', {
+          id: data.user.id,
+          email: data.user.email,
+          role: mappedUser?.role,
+          metadata: data.user.user_metadata,
+        });
+
+        if (mappedUser?.role !== 'admin') {
+          console.warn(
+            '⚠️ [AuthContext] Lưu ý: Tài khoản đăng nhập có role là "' +
+              mappedUser?.role +
+              '". Để vào /admin, user_metadata trong Supabase Auth cần có role: "admin".'
+          );
+        }
+
         if (mappedUser) {
           showToast(`👋 Chào mừng quay trở lại, ${mappedUser.name}!`);
         }
@@ -137,7 +175,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return { success: false, message: 'Không thể đăng nhập. Vui lòng thử lại!' };
     } catch (err: any) {
-      console.error('Lỗi khi đăng nhập:', err);
+      console.error('🚨 [AuthContext login Exception]:', {
+        error: err,
+        message: err?.message,
+        stack: err?.stack,
+      });
       return { success: false, message: err?.message || 'Có lỗi xảy ra khi kết nối hệ thống.' };
     }
   };
@@ -208,6 +250,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const loginWithGoogle = async (): Promise<{ success: boolean; message: string }> => {
+    try {
+      console.log('🔄 [AuthContext] Bắt đầu xác thực bằng Google OAuth...');
+      const redirectTo = `${window.location.origin}/auth/callback`;
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      });
+
+      if (error) {
+        console.error('❌ [Google OAuth Error]:', error);
+        return { success: false, message: error.message || 'Lỗi đăng nhập Google.' };
+      }
+
+      return { success: true, message: 'Đang chuyển hướng sang Google...' };
+    } catch (err: any) {
+      console.error('🚨 [Google OAuth Exception]:', err);
+      return { success: false, message: err?.message || 'Có lỗi xảy ra khi kết nối Google.' };
+    }
+  };
+
   const logout = async () => {
     try {
       await supabase.auth.signOut();
@@ -225,6 +294,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         loading,
         login,
+        loginWithGoogle,
         register,
         logout,
         isAdmin: user?.role === 'admin',
